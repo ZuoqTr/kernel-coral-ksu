@@ -58,7 +58,9 @@ jobs:
       - name: Append EXTRAVERSION
         working-directory: kernel-build/kernel
         run: |
-          echo 'EXTRAVERSION = ${{ github.event.inputs.extraversion }}' >> Makefile
+          if ! grep -q "^EXTRAVERSION = " Makefile; then
+            echo 'EXTRAVERSION = ${{ github.event.inputs.extraversion }}' >> Makefile
+          fi
           grep EXTRAVERSION Makefile | tail -3
 
       - name: Setup KSU Next
