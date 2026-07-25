@@ -1,0 +1,98 @@
+name: Build Coral KSU Kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      extraversion:
+        description: 'Kernel EXTRAVERSION suffix'
+        required: false
+        default: '-KSU-SUSFS-coral'
+        type: string
+
+concurrency:
+  group: build-coral-ksu
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/msm
+      KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
+      KERNEL_DEFCONFIG: floral_defconfig
+      KSU_TAG: v3.1.0-legacy-susfs
+      KERNEL_DIR: kernel
+      OUT_DIR: out
+      AK3_DIR: anykernel3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: kernel-build
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git curl wget build-essential bc flex bison \
+            libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            libncurses-dev zlib1g-dev ccache
+
+      - name: Setup ccache
+        run: |
+          mkdir -p ~/.cache/ccache
+          echo "max_size = 10G" > ~/.ccache/ccache.conf
+          ccache -M 10G
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-coral-ksu-${{ github.run_id }}
+          restore-keys: ccache-coral-ksu-
+
+      - name: Clone kernel source
+        working-directory: kernel-build
+        run: bash scripts/0-prep-kernel.sh
+
+      - name: Append EXTRAVERSION
+        working-directory: kernel-build/kernel
+        run: |
+          echo 'EXTRAVERSION = ${{ github.event.inputs.extraversion }}' >> Makefile
+          grep EXTRAVERSION Makefile | tail -3
+
+      - name: Setup KSU Next
+        working-directory: kernel-build
+        run: bash scripts/1-setup-ksu.sh
+
+      - name: Apply manual hook patches
+        working-directory: kernel-build
+        run: bash scripts/2-apply-patches.sh
+
+      - name: Configure kernel
+        working-directory: kernel-build
+        run: bash scripts/3-configure.sh
+
+      - name: Build kernel
+        working-directory: kernel-build
+        run: bash scripts/4-build.sh
+
+      - name: Verify KSU symbols
+        working-directory: kernel-build
+        run: bash scripts/5-verify-symbols.sh
+
+      - name: Locate kernel image
+        working-directory: kernel-build/kernel/out
+        run: |
+          ls -lh arch/arm64/boot/Image* 2>&1 || true
+          file arch/arm64/boot/Image.gz-dtb 2>&1 || true
+
+      - name: Package AnyKernel3 zip
+        working-directory: kernel-build
+        run: bash scripts/6-package-ak3.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AnyKernel3-coral-${{ github.run_number }}
+          path: kernel-build/AnyKernel3-coral-*.zip
+          retention-days: 30
+          if-no-files-found: error

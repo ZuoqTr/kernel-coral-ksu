@@ -1,0 +1,2 @@
+ui_print(" ");
+ui_print("Installing KernelSU Next + susfs for Pixel 4 (coral)...");
