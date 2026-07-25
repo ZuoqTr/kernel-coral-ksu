@@ -18,7 +18,7 @@ grep -q "kernelsu/" drivers/Makefile || { echo "[1] drivers/Makefile missing ksu
 grep -q "kernelsu/Kconfig" drivers/Kconfig || { echo "[1] drivers/Kconfig missing ksu source"; exit 1; }
 
 echo "[1] OK: KSU integrated. Files:"
-ls drivers/kernelsu/kernel/ | head -10
+ls drivers/kernelsu/ | head -15
 echo "[1] Makefile tail:"
 tail -3 drivers/Makefile
 echo "[1] Kconfig tail:"
