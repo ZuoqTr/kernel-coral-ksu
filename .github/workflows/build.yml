@@ -40,9 +40,9 @@ jobs:
 
       - name: Setup ccache
         run: |
-          mkdir -p ~/.cache/ccache
+          mkdir -p ~/.cache/ccache ~/.ccache
           echo "max_size = 10G" > ~/.ccache/ccache.conf
-          ccache -M 10G
+          ccache -M 10G || true
 
       - uses: actions/cache@v4
         with:
