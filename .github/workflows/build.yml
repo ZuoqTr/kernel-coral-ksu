@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 35
+    timeout-minutes: 90
     env:
       KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/msm
       KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
