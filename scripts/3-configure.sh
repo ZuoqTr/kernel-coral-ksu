@@ -25,3 +25,8 @@ make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- silentoldconfig 2>&1 | tail -5
 
 echo "[3] KSU flags in .config:"
 grep -E "^CONFIG_KSU" .config || echo "  (no CONFIG_KSU flags!)"
+# STOP HERE. Do NOT run olddefconfig/silentoldconfig.
+# Running another config step rewrites auto.conf + auto.conf.cmd and
+# sets up a mtime race that the build amplifies into a silentoldconfig
+# infinite loop. The floral_defconfig is already final; the build's
+# implicit silentoldconfig pass during compile handles any drift.
