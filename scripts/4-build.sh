@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Build the kernel in-tree (no O=out — avoids 4.14 silentoldconfig loop).
+# 4.14 with ccache + parallel make races auto.conf.cmd against .config
+# and fires silentoldconfig on every subdir invocation. -j1 is the
+# only way to ship a working build for this kernel tree.
 set -euo pipefail
 
 export ARCH=arm64
@@ -11,11 +14,6 @@ cd kernel
 
 echo "[4] gcc version:"
 aarch64-linux-gnu-gcc --version | head -1
-
-# Freeze .config: read-only so silentoldconfig can't rewrite it under -j.
-# This breaks the 4.14 auto.conf <-> auto.conf.cmd mtime cycle that
-# otherwise fires silentoldconfig on every subdir make invocation.
-chmod -w .config include/config/auto.conf 2>/dev/null || true
 
 START=$(date +%s)
 echo "[4] Starting build at $(date)"

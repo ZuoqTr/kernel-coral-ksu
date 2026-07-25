@@ -16,8 +16,12 @@ cat ../kernel-defconfig-fragments/ksu-susfs.config >> "arch/arm64/configs/${KERN
 echo "[3] make ${KERNEL_DEFCONFIG}"
 make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- "$KERNEL_DEFCONFIG" 2>&1 | tail -5
 
-echo "[3] make olddefconfig"
-make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig 2>&1 | tail -5
+# Use silentoldconfig (NOT olddefconfig) so include/config/auto.conf.cmd
+# matches what the build will regenerate. Mixing olddefconfig here and
+# silentoldconfig in the build causes an infinite re-run loop because
+# auto.conf.cmd records the producing conf command.
+echo "[3] make silentoldconfig"
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- silentoldconfig 2>&1 | tail -5
 
 echo "[3] KSU flags in .config:"
 grep -E "^CONFIG_KSU" .config || echo "  (no CONFIG_KSU flags!)"
