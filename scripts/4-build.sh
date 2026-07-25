@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Build the kernel in-tree (no O=out — avoids 4.14 silentoldconfig loop).
-# 4.14 with ccache + parallel make races auto.conf.cmd against .config
-# and fires silentoldconfig on every subdir invocation. -j1 is the
-# only way to ship a working build for this kernel tree.
+# Build the kernel in-tree.
+# Fragment forces LTO_NONE=y so gcc can compile 4.14 msm without clang.
 set -euo pipefail
 
 export ARCH=arm64
