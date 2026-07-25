@@ -9,9 +9,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 KERNEL_IMAGE=""
 for img in \
-  "$KERNEL_DIR/$OUT_DIR/arch/arm64/boot/Image.gz-dtb" \
-  "$KERNEL_DIR/$OUT_DIR/arch/arm64/boot/Image.lz4-dtb" \
-  "$KERNEL_DIR/$OUT_DIR/arch/arm64/boot/Image"; do
+  "$KERNEL_DIR/arch/arm64/boot/Image.gz-dtb" \
+  "$KERNEL_DIR/arch/arm64/boot/Image.lz4-dtb" \
+  "$KERNEL_DIR/arch/arm64/boot/Image"; do
   if [ -f "$img" ]; then
     KERNEL_IMAGE="$img"
     echo "[6] Found: $KERNEL_IMAGE"
@@ -28,8 +28,8 @@ rm -f "$REPO_ROOT/$AK3_DIR"/Image* "$REPO_ROOT/$AK3_DIR"/dtbo.img "$REPO_ROOT/$A
 
 cp "$KERNEL_IMAGE" "$REPO_ROOT/$AK3_DIR/"
 
-if [ -f "$KERNEL_DIR/$OUT_DIR/arch/arm64/boot/dtbo.img" ]; then
-  cp "$KERNEL_DIR/$OUT_DIR/arch/arm64/boot/dtbo.img" "$REPO_ROOT/$AK3_DIR/"
+if [ -f "$KERNEL_DIR/arch/arm64/boot/dtbo.img" ]; then
+  cp "$KERNEL_DIR/arch/arm64/boot/dtbo.img" "$REPO_ROOT/$AK3_DIR/"
   echo "[6] dtbo.img copied"
 fi
 

@@ -82,7 +82,7 @@ jobs:
         run: bash scripts/5-verify-symbols.sh
 
       - name: Locate kernel image
-        working-directory: kernel-build/kernel/out
+        working-directory: kernel-build/kernel
         run: |
           ls -lh arch/arm64/boot/Image* 2>&1 || true
           file arch/arm64/boot/Image.gz-dtb 2>&1 || true
@@ -96,4 +96,4 @@ jobs:
           name: AnyKernel3-coral-${{ github.run_number }}
           path: kernel-build/AnyKernel3-coral-*.zip
           retention-days: 30
-          if-no-files-found: error# reindex
+          if-no-files-found: error

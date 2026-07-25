@@ -2,12 +2,11 @@
 # Non-fatal symbol check using KSU's check_symbol tool.
 set -uo pipefail
 
-OUT_DIR="${OUT_DIR:-out}"
 cd kernel
 
-VMLINUX=$(find "$OUT_DIR" -name vmlinux -type f 2>/dev/null | head -1)
-KSU_KO=$(find "$OUT_DIR" -path "*/kernelsu/kernelsu.ko" 2>/dev/null | head -1)
-CHK=$(find "$OUT_DIR" -path "*/kernelsu/check_symbol" -type f 2>/dev/null | head -1)
+VMLINUX=$(find . -name vmlinux -type f 2>/dev/null | head -1)
+KSU_KO=$(find . -path "*/kernelsu/kernelsu.ko" 2>/dev/null | head -1)
+CHK=$(find . -path "*/kernelsu/check_symbol" -type f 2>/dev/null | head -1)
 
 echo "[5] vmlinux:    $VMLINUX"
 echo "[5] kernelsu.ko: $KSU_KO"
