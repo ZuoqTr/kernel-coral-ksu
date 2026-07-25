@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # Build the kernel in-tree (no O=out — avoids 4.14 silentoldconfig loop).
-# Force serial sub-makes (-j1) at top level — 4.14's silentoldconfig
-# race-conditions under parallel subdir invocations.
 set -euo pipefail
 
 export ARCH=arm64
@@ -14,14 +12,16 @@ cd kernel
 echo "[4] gcc version:"
 aarch64-linux-gnu-gcc --version | head -1
 
+# Freeze .config: read-only so silentoldconfig can't rewrite it under -j.
+# This breaks the 4.14 auto.conf <-> auto.conf.cmd mtime cycle that
+# otherwise fires silentoldconfig on every subdir make invocation.
+chmod -w .config include/config/auto.conf 2>/dev/null || true
+
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
 
-# Top-level make serial to break silentoldconfig race.
-# Sub-make inherits -j$(nproc) via MAKEFLAGS for compile parallelism.
-make -j1 \
+make -j"$(nproc)" \
   ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
-  MAKEFLAGS="ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabihf- -j$(nproc)" \
   Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
