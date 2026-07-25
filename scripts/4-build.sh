@@ -5,6 +5,7 @@ set -euo pipefail
 OUT_DIR="${OUT_DIR:-out}"
 export ARCH=arm64
 export CROSS_COMPILE=aarch64-linux-gnu-
+export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
 export CC="ccache aarch64-linux-gnu-gcc"
 
 cd kernel
@@ -15,7 +16,7 @@ aarch64-linux-gnu-gcc --version | head -1
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
 
-make O="$OUT_DIR" -j"$(nproc)" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image.gz-dtb 2>&1 | tee ../build.log
+make O="$OUT_DIR" -j"$(nproc)" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabihf- Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"

@@ -36,6 +36,7 @@ jobs:
           sudo apt-get install -y git curl wget build-essential bc flex bison \
             libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 \
             gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
             libncurses-dev zlib1g-dev ccache
 
       - name: Setup ccache
