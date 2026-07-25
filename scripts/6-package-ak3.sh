@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Package the kernel image into an AnyKernel3 zip.
+# Paths use O=out (matches 3-configure.sh / 4-build.sh).
 set -euo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
@@ -7,11 +8,12 @@ OUT_DIR="${OUT_DIR:-out}"
 AK3_DIR="${AK3_DIR:-anykernel3}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+BOOT="$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
 KERNEL_IMAGE=""
 for img in \
-  "$KERNEL_DIR/arch/arm64/boot/Image.gz-dtb" \
-  "$KERNEL_DIR/arch/arm64/boot/Image.lz4-dtb" \
-  "$KERNEL_DIR/arch/arm64/boot/Image"; do
+  "$BOOT/Image.gz-dtb" \
+  "$BOOT/Image.lz4-dtb" \
+  "$BOOT/Image"; do
   if [ -f "$img" ]; then
     KERNEL_IMAGE="$img"
     echo "[6] Found: $KERNEL_IMAGE"
@@ -20,7 +22,7 @@ for img in \
 done
 
 if [ -z "$KERNEL_IMAGE" ]; then
-  echo "[6] ERROR: No kernel image found"; exit 1
+  echo "[6] ERROR: No kernel image found in $BOOT"; exit 1
 fi
 
 echo "[6] Cleaning stale images from AK3 dir"
@@ -28,8 +30,8 @@ rm -f "$REPO_ROOT/$AK3_DIR"/Image* "$REPO_ROOT/$AK3_DIR"/dtbo.img "$REPO_ROOT/$A
 
 cp "$KERNEL_IMAGE" "$REPO_ROOT/$AK3_DIR/"
 
-if [ -f "$KERNEL_DIR/arch/arm64/boot/dtbo.img" ]; then
-  cp "$KERNEL_DIR/arch/arm64/boot/dtbo.img" "$REPO_ROOT/$AK3_DIR/"
+if [ -f "$BOOT/dtbo.img" ]; then
+  cp "$BOOT/dtbo.img" "$REPO_ROOT/$AK3_DIR/"
   echo "[6] dtbo.img copied"
 fi
 
