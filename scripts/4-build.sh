@@ -55,6 +55,11 @@ echo "[4] Starting build at $(date)"
 # everything else so real bugs surface.
 KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
 
+# Build target: 'Image' (no dtbs). 'Image.gz-dtb' pulls in DTBO /
+# DTS preprocessing step which Clang 14 chokes on
+# (Error: pm8150.dtsi:21.1-10 syntax error). The plan/6-package-ak3.sh
+# already handles bare 'Image' as a fallback. AK3 on device concatenates
+# its own DTBs from the vendor ramdisk.
 make -j"$(nproc)" \
   O="$OUT_DIR" \
   ARCH=arm64 \
@@ -63,7 +68,7 @@ make -j"$(nproc)" \
   HOSTCFLAGS="-fcommon" \
   KBUILD_HOSTCFLAGS="-fcommon" \
   KCFLAGS="$KCFLAGS" \
-  Image.gz-dtb 2>&1 | tee ../build.log
+  Image 2>&1 | tee ../build.log
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"
