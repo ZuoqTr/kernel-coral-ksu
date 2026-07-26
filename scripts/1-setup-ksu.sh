@@ -26,3 +26,13 @@ grep -q "kernelsu/Kconfig" drivers/Kconfig || { echo "[1] drivers/Kconfig missin
 
 echo "[1] OK: KSU integrated (kprobes mode)"
 ls drivers/kernelsu/ | head -15
+
+# Patch scripts/dtc/dtc-lexer.l to extern yylloc. Clang 12+ default
+# -fno-common causes link failure: yylloc defined in both dtc-lexer.lex.o
+# and dtc-parser.tab.o. Adding 'extern int yylloc' makes the lexer
+# reference the parser's definition instead of redefining it.
+DTC_LEXER="scripts/dtc/dtc-lexer.l"
+if [ -f "$DTC_LEXER" ] && ! grep -q "^extern int yylloc" "$DTC_LEXER"; then
+  sed -i '1i extern int yylloc;' "$DTC_LEXER"
+  echo "[1] Patched dtc-lexer.l to extern yylloc"
+fi

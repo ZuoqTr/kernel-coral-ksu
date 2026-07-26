@@ -84,6 +84,7 @@ make -j"$(nproc)" \
   ARCH=arm64 \
   CC=clang \
   HOSTCC=gcc \
+  HOSTCXX=g++ \
   CROSS_COMPILE=aarch64-linux-android- \
   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
   CLANG_TRIPLE=aarch64-linux-gnu- \
