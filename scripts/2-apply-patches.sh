@@ -2,8 +2,12 @@
 # Apply 5 KSU manual hook patches to the kernel tree.
 set -euo pipefail
 
-cd kernel
-for p in ../patches/ksu-manual-hooks/*.patch; do
+KERNEL_DIR="${KERNEL_DIR:-kernel}"
+KERNEL_SRC="$KERNEL_DIR/private/msm-google"
+
+cd "$KERNEL_SRC"
+
+for p in ../../patches/ksu-manual-hooks/*.patch; do
   echo "[2] Applying $(basename "$p")"
   if ! git apply --verbose "$p"; then
     echo "[2] Retrying with --ignore-whitespace"

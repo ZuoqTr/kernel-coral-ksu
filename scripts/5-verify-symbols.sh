@@ -2,13 +2,17 @@
 # Non-fatal symbol check using KSU's check_symbol tool.
 set -uo pipefail
 
-cd kernel
+KERNEL_DIR="${KERNEL_DIR:-kernel}"
+KERNEL_SRC="$KERNEL_DIR/private/msm-google"
+OUT_DIR="${OUT_DIR:-out}"
 
-VMLINUX=$(find . -name vmlinux -type f 2>/dev/null | head -1)
-KSU_KO=$(find . -path "*/kernelsu/kernelsu.ko" 2>/dev/null | head -1)
-CHK=$(find . -path "*/kernelsu/check_symbol" -type f 2>/dev/null | head -1)
+cd "$KERNEL_SRC"
 
-echo "[5] vmlinux:    $VMLINUX"
+VMLINUX=$(find "$KERNEL_DIR/$OUT_DIR" -name vmlinux -type f 2>/dev/null | head -1)
+KSU_KO=$(find "$KERNEL_DIR/$OUT_DIR" -path "*/kernelsu/kernelsu.ko" 2>/dev/null | head -1)
+CHK=$(find "$KERNEL_SRC" -path "*/kernelsu/check_symbol" -type f 2>/dev/null | head -1)
+
+echo "[5] vmlinux:     $VMLINUX"
 echo "[5] kernelsu.ko: $KSU_KO"
 echo "[5] check_symbol: $CHK"
 
@@ -19,8 +23,7 @@ else
   echo "[5] Skipping: missing vmlinux/ko/check_symbol"
 fi
 
-# Always show KSU module info
 if [ -f "$KSU_KO" ]; then
-  echo "[5] KSU module loaded with these symbols (sample):"
+  echo "[5] KSU module symbols (sample):"
   nm "$KSU_KO" 2>/dev/null | grep -E " T (ksu_|susfs_)" | head -10 || true
 fi

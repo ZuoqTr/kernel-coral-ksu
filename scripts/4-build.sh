@@ -1,83 +1,57 @@
 #!/usr/bin/env bash
-# Build kernel using apt gcc-aarch64-linux-gnu (gcc 11/12). This was
-# the original path before the Clang pivot. The Clang pivot hit
-# hard errors specific to Clang 14 that gcc doesn't:
-#   - -mgeneral-regs-only incompatible with float types in msm charger
-#   - __bad_copy_to size mismatch in msm ipa
-# gcc 11 hits a flood of -Werror=array-bounds/maybe-uninitialized/
-# implicit-int/etc. warnings on 4.14 msm inline asm. Suppress ALL of
-# those by appending -Wno-error to KCFLAGS — kbuild's -Werror becomes
-# -Werror -Wno-error = effectively warnings-only.
-#
-# Clang apt install is kept as fallback for ld.lld (linker).
-#
-# HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc has
-# yylloc in two TUs. -fcommon merges into single common storage.
+# Build kernel via AOSP build.sh (pinned in manifest at build/build.sh).
+# build.sh reads BUILD_CONFIG = build.config (= build.config.no-cfi
+# linkfile, per manifest). It sets up Clang + GCC 4.9 cross-compile via
+# the pinned prebuilts and drives make with the right LLVM=1 flags.
+# This is the canonical AOSP kernel build flow — sidesteps all the
+# source-level hard errors we hit with apt gcc-11 / apt clang-14 /
+# Clang-12 tarball orchestration.
 set -euo pipefail
 
-OUT_DIR="${OUT_DIR:-out}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
+OUT_DIR="${OUT_DIR:-out}"
+KERNEL_SRC="$KERNEL_DIR/private/msm-google"
+BUILD_SH="$KERNEL_DIR/build/build.sh"
 
-export ARCH=arm64
-export CROSS_COMPILE=aarch64-linux-gnu-
-export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
+if [ ! -x "$BUILD_SH" ]; then
+  echo "[4] ERROR: $BUILD_SH not found; run 0-prep-kernel.sh first"
+  exit 1
+fi
 
-export CC="aarch64-linux-gnu-gcc"
-export CXX="aarch64-linux-gnu-g++"
-export LD="aarch64-linux-gnu-ld"
-export AR="aarch64-linux-gnu-ar"
-export NM="aarch64-linux-gnu-nm"
-export OBJCOPY="aarch64-linux-gnu-objcopy"
-export OBJDUMP="aarch64-linux-gnu-objdump"
-export STRIP="aarch64-linux-gnu-strip"
-export READELF="aarch64-linux-gnu-readelf"
-export HOSTCC=gcc
-export HOSTCXX=g++
+cd "$KERNEL_SRC"
 
-unset LLVM LLVM_IAS CLANG_TRIPLE
-
-cd "$KERNEL_DIR"
-
-echo "[4] GCC: $($CC --version | head -1)"
-echo "[4] CROSS_COMPILE_ARM32: $(${CROSS_COMPILE_ARM32}gcc --version | head -1)"
+# ccache wrap
+export CCACHE_DIR="${CCACHE_DIR:-$HOME/.cache/ccache}"
+mkdir -p "$CCACHE_DIR"
+export CC="ccache clang"
+export CXX="ccache clang++"
+export HOSTCC="ccache clang"
+export HOSTCXX="ccache clang++"
 
 START=$(date +%s)
-echo "[4] Starting build at $(date)"
+echo "[4] build start: $(date)"
+echo "[4] build.sh: $BUILD_SH"
+echo "[4] KERNEL_SRC: $(pwd)"
+echo "[4] OUT_DIR: $KERNEL_DIR/$OUT_DIR"
 
-# KCFLAGS=-Wno-error suppresses -Werror from KBUILD_CFLAGS_KERNEL.
-# The kbuild's -Werror sits before KCFLAGS so -Wno-error after it
-# cancels the error elevation. The remaining -Wno-error=* entries
-# below target Clang-specific false positives that don't apply to
-# gcc but won't hurt.
-KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -Wno-error=incompatible-pointer-types -Wno-error=stringop-overflow -Wno-error=stringop-overread -Wno-error=address-of-packed-member -Wno-error=cast-function-type -Wno-error=enum-conversion -Wno-error=stringop-truncation -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
-
-# Build target: 'Image' (no dtbs). Image.gz-dtb pulls in DTBO/DTS
-# preprocessing which adds overhead. AK3 on device concatenates
-# vendor ramdisk DTBs.
-make -j"$(nproc)" \
-  O="$OUT_DIR" \
-  ARCH=arm64 \
-  CROSS_COMPILE="$CROSS_COMPILE" \
-  CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
-  HOSTCFLAGS="-fcommon" \
-  KBUILD_HOSTCFLAGS="-fcommon" \
-  KCFLAGS="$KCFLAGS" \
-  Image 2>&1 | tee ../build.log
+bash "$BUILD_SH" \
+  -c "$KERNEL_SRC/build.config" \
+  -O "$KERNEL_DIR/$OUT_DIR" \
+  -j"$(nproc)" \
+  2>&1 | tee "$KERNEL_DIR/build.log"
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"
 
-BOOT="$OUT_DIR/arch/arm64/boot"
+BOOT="$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
 echo "[4] Built images:"
 ls -lh "$BOOT" | grep -E "Image|dtb|dtbo" || true
 
-if [ -f "$BOOT/Image.gz-dtb" ]; then
-  echo "[4] SUCCESS: Image.gz-dtb present"
-elif [ -f "$BOOT/Image.lz4-dtb" ]; then
-  echo "[4] SUCCESS: Image.lz4-dtb present (LZ4)"
-elif [ -f "$BOOT/Image" ]; then
-  echo "[4] SUCCESS: Image present (raw)"
-else
-  echo "[4] ERROR: No kernel image built"
-  exit 1
-fi
+for img in Image.gz-dtb Image.lz4-dtb Image; do
+  if [ -f "$BOOT/$img" ]; then
+    echo "[4] SUCCESS: $img"
+    exit 0
+  fi
+done
+echo "[4] ERROR: no kernel image produced"
+exit 1

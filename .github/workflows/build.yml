@@ -18,8 +18,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
-      KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/msm
+      KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/manifest
       KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
+      BUILD_ID: QQ3A.200805.001
       KERNEL_DEFCONFIG: floral_defconfig
       KSU_TAG: v3.1.0-legacy
       KERNEL_DIR: kernel
@@ -34,17 +35,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git curl wget build-essential bc flex bison \
-            libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 \
-            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
-            libc6-dev-arm64-cross libc6-dev-armhf-cross \
+            libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 repo \
             libncurses-dev zlib1g-dev ccache
-          # gcc-aarch64-linux-gnu (gcc 11/12 from apt) is the actual
-          # compiler. Clang 14 has hard errors that gcc doesn't:
-          # -mgeneral-regs-only + float, __bad_copy_to size mismatch.
-          # gcc 11 has -Werror=array-bounds/maybe-uninitialized/etc.
-          # on 4.14 msm inline asm; 4-build.sh KCFLAGS=-Wno-error
-          # suppresses by cancelling the kbuild's -Werror.
 
       - name: Setup ccache
         run: |
@@ -58,12 +50,12 @@ jobs:
           key: ccache-coral-ksu-${{ github.run_id }}
           restore-keys: ccache-coral-ksu-
 
-      - name: Clone kernel source
+      - name: Manifest checkout (kernel + prebuilts + build.sh)
         working-directory: kernel-build
         run: bash scripts/0-prep-kernel.sh
 
       - name: Append EXTRAVERSION
-        working-directory: kernel-build/kernel
+        working-directory: kernel-build/kernel/private/msm-google
         run: |
           if ! grep -q "^EXTRAVERSION = " Makefile; then
             echo 'EXTRAVERSION = ${{ github.event.inputs.extraversion }}' >> Makefile
@@ -82,7 +74,7 @@ jobs:
         working-directory: kernel-build
         run: bash scripts/3-configure.sh
 
-      - name: Build kernel
+      - name: Build kernel (via manifest build.sh)
         working-directory: kernel-build
         run: bash scripts/4-build.sh
 
@@ -91,10 +83,10 @@ jobs:
         run: bash scripts/5-verify-symbols.sh
 
       - name: Locate kernel image
-        working-directory: kernel-build/kernel
+        working-directory: kernel-build/kernel/out
         run: |
-          ls -lh out/arch/arm64/boot/Image* 2>&1 || true
-          file out/arch/arm64/boot/Image.gz-dtb 2>&1 || true
+          ls -lh arch/arm64/boot/Image* 2>&1 || true
+          file arch/arm64/boot/Image.gz-dtb 2>&1 || true
 
       - name: Package AnyKernel3 zip
         working-directory: kernel-build

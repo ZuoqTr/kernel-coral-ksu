@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Package the kernel image into an AnyKernel3 zip.
-# Paths use O=out (matches 3-configure.sh / 4-build.sh).
+# KERNEL_DIR layout after manifest sync:
+#   kernel/private/msm-google  → kernel source
+#   kernel/out/arch/arm64/boot → Image* artifacts
 set -euo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
