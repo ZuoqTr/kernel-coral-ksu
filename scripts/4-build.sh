@@ -88,6 +88,8 @@ make -j"$(nproc)" \
   CC=clang \
   HOSTCC=gcc \
   HOSTCXX=g++ \
+  HOSTCFLAGS="-fcommon" \
+  HOSTLDFLAGS="-Wl,--allow-multiple-definition" \
   CROSS_COMPILE=aarch64-linux-android- \
   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
   CLANG_TRIPLE=aarch64-linux-gnu- \
