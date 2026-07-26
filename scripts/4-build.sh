@@ -48,9 +48,12 @@ echo "[4] Starting build at $(date)"
 # - -Werror=implicit-int in lpm-levels.c:1443 (missing `int` type
 #   on `static s2idle_sleep_attempts;` — gcc K&R legacy, Clang
 #   C99+ rejects)
+# Plus Clang 14 with apt libc6-dev-arm64-cross can't find the next
+# limits.h via #include_next (gcc-cross's limits.h has #include_next).
+# Add the cross libc dir behind everything else via -idirafter.
 # Same family gcc-11 hit. Suppress just these — keep -Werror for
 # everything else so real bugs surface.
-KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int"
+KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
 
 make -j"$(nproc)" \
   O="$OUT_DIR" \
