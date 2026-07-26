@@ -53,7 +53,7 @@ echo "[4] Starting build at $(date)"
 # Add the cross libc dir behind everything else via -idirafter.
 # Same family gcc-11 hit. Suppress just these — keep -Werror for
 # everything else so real bugs surface.
-KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
+KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -Wno-error=incompatible-pointer-types -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
 
 # Build target: 'Image' (no dtbs). 'Image.gz-dtb' pulls in DTBO /
 # DTS preprocessing step which Clang 14 chokes on
