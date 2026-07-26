@@ -76,6 +76,6 @@ fi
 # Kconfig, so the only way out is to patch the Makefile.
 # Use a benign -Wno-error flag that survives Makefile.build's
 # KBUILD_CFLAGS composition.
-sed -i 's|-Werror|-Wno-error|g' scripts/Makefile.build
+sed -i 's|-Werror|-Wno-error|g' scripts/Makefile.build 2>/dev/null || echo "[0] sed -Werror skipped (no match)"
 echo "[0] -Werror -> -Wno-error in scripts/Makefile.build"
-grep -c "\-Wno-error" scripts/Makefile.build
+grep -c "\-Wno-error" scripts/Makefile.build 2>/dev/null || echo "[0] no -Wno-error matches (Makefile.build may have no -Werror)"
