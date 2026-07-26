@@ -5,11 +5,11 @@
 #   - kernel/msm-extra (audio techpack)
 #   - kernel/msm-modules/{data-kernel, qca-wifi, touch}
 #   - prebuilts/gcc/linux-x86/{aarch64,arm}/...-4.9 at pie-release
-#   - prebuilts/clang/host/linux-x86 at pie-release
+#   - prebuilts-master/clang/host/linux-x86 (NOT prebuilts/clang)
 #   - build/ (the AOSP build.sh wrapper)
 # `repo` checks these out into KERNEL_DIR. After sync, the actual kernel
 # source is at KERNEL_DIR/private/msm-google.
-set -euo pipefail
+set -uo pipefail
 
 KERNEL_SOURCE_URL="${KERNEL_SOURCE_URL:-https://android.googlesource.com/kernel/manifest}"
 KERNEL_SOURCE_BRANCH="${KERNEL_SOURCE_BRANCH:-android-msm-coral-4.14-android10-qpr3}"
@@ -33,7 +33,7 @@ KERNEL_DIR="$(pwd)"  # absolute path for post-sync dump
 
 # `--groups all` is required: the coral manifest tags the Clang
 # prebuilt with groups="partner"; default repo sync skips partner
-# projects which silently leaves prebuilts/clang empty.
+# projects which silently leaves prebuilts-master/clang empty.
 # Use --no-repo-verify because googleapis launcher differs from the
 # kernel/manifest's pinned repo hash.
 repo init -u "$KERNEL_SOURCE_URL" -b "$KERNEL_SOURCE_BRANCH" --depth=1 --no-repo-verify
@@ -42,15 +42,15 @@ repo sync -c -j"$(nproc)" --no-tags --groups all
 # Verify kernel source actually checked out
 echo "[0] === POST-SYNC DUMP ==="
 echo "[0] kernel/ top-level:"
-ls -la "$KERNEL_DIR" | head -30
+ls -la "$KERNEL_DIR" 2>&1 | head -30 || true
 echo "[0] kernel/build/:"
-ls "$KERNEL_DIR/build/" 2>&1 | head -10
+ls "$KERNEL_DIR/build/" 2>&1 | head -10 || true
 echo "[0] kernel/prebuilts/:"
-ls "$KERNEL_DIR/prebuilts/" 2>&1 | head -10
-echo "[0] kernel/prebuilts/clang/host/linux-x86/ (if exists):"
-ls "$KERNEL_DIR/prebuilts/clang/host/linux-x86/" 2>&1 | head -5
-echo "[0] kernel/private/msm-google/ (if exists):"
-ls "$KERNEL_DIR/private/msm-google/" 2>&1 | head -10
+ls "$KERNEL_DIR/prebuilts/" 2>&1 | head -10 || true
+echo "[0] kernel/prebuilts-master/clang/host/linux-x86/:"
+ls "$KERNEL_DIR/prebuilts-master/clang/host/linux-x86/" 2>&1 | head -5 || true
+echo "[0] kernel/private/msm-google/:"
+ls "$KERNEL_DIR/private/msm-google/" 2>&1 | head -10 || true
 echo "[0] === END DUMP ==="
 
 KERNEL_SRC="$KERNEL_DIR/private/msm-google"
@@ -59,7 +59,7 @@ if [ ! -d "$KERNEL_SRC/arch/arm64/configs" ]; then
   exit 1
 fi
 echo "[0] Available defconfigs (coral/flame/floral):"
-ls "$KERNEL_SRC/arch/arm64/configs/" | grep -E "defconfig$" || true
+ls "$KERNEL_SRC/arch/arm64/configs/" 2>&1 | grep -E "defconfig$" || true
 
 # Verify build.sh present (pinned by manifest)
 if [ ! -x "build/build.sh" ]; then
@@ -68,18 +68,12 @@ if [ ! -x "build/build.sh" ]; then
 fi
 echo "[0] build.sh present at build/build.sh"
 
-# Verify prebuilts
+# Verify prebuilts (note: clang is in prebuilts-master/, NOT prebuilts/)
 echo "[0] Clang prebuilt:"
-ls prebuilts/clang/host/linux-x86/clang-*/bin/clang 2>/dev/null | head -1
+ls prebuilts-master/clang/host/linux-x86/clang-*/bin/clang 2>/dev/null | head -1 || true
 echo "[0] GCC 4.9 prebuilt (64-bit):"
-ls prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/ 2>/dev/null | head -3
+ls prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/ 2>/dev/null | head -3 || true
 echo "[0] GCC 4.9 prebuilt (32-bit):"
-ls prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/ 2>/dev/null | head -3
+ls prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/ 2>/dev/null | head -3 || true
 
 echo "[0] prep complete: KERNEL_SRC=$KERNEL_SRC"
-echo "[0] Top-level checkout:"
-ls -la "$KERNEL_DIR" | head -25
-echo "[0] prebuilts/clang:"
-ls "$KERNEL_DIR/prebuilts/clang/host/linux-x86/" 2>&1 | head -5 || echo "  (missing)"
-echo "[0] build.sh:"
-ls -la "$KERNEL_DIR/build/build.sh" 2>&1 || echo "  (missing)"
