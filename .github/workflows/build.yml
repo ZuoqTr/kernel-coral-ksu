@@ -31,7 +31,7 @@ jobs:
       # Clang 14+ rejects __builtin_constant_p stricter and rejects
       # arch/arm64's `mgeneral-regs-only` differently; 4.14 msm was written
       # for Clang 12.
-      CLANG_URL: https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/archive/refs/heads/12.0/linux-x86_64.tar.gz
+      CLANG_URL: https://codeload.github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/tar.gz/refs/heads/lineage-20.0
       EXTRAVERSION: ${{ github.event.inputs.extraversion }}
     steps:
       - uses: actions/checkout@v4

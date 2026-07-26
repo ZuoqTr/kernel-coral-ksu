@@ -5,7 +5,7 @@
 # that compiles 4.14 msm cleanly.
 set -euo pipefail
 
-CLANG_URL="${CLANG_URL:-https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/archive/refs/heads/12.0/linux-x86_64.tar.gz}"
+CLANG_URL="${CLANG_URL:-https://codeload.github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/tar.gz/refs/heads/lineage-20.0}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLANG_DIR="$REPO_ROOT/kernel-build/clang-r416183b"
