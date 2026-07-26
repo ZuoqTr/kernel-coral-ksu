@@ -9,7 +9,12 @@ import os
 import sys
 import subprocess
 
-ALLOWED_WARNINGS = set()
+ALLOWED_WARNINGS = {
+    # gcc 11/12+ false positives in 4.14 arm64 asm — correct as written
+    'cmpxchg.h:38',
+    'atomic_lse.h:458',
+    'thread_info.h:108',
+}
 
 OFILE = None
 WARNING_RE = re.compile(r'''(.*/|)([^/]+\.[a-z]+:\d+):(\d+:)? warning:''')
