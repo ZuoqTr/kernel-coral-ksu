@@ -36,9 +36,22 @@ cd "$KERNEL_DIR"
 # Use --no-repo-verify because googleapis launcher differs from the
 # kernel/manifest's pinned repo hash.
 repo init -u "$KERNEL_SOURCE_URL" -b "$KERNEL_SOURCE_BRANCH" --depth=1 --no-repo-verify
-repo sync -c -j"$(nproc)" --no-tags --groups all 2>&1 | tail -30
+repo sync -c -j"$(nproc)" --no-tags --groups all
 
 # Verify kernel source actually checked out
+echo "[0] === POST-SYNC DUMP ==="
+echo "[0] kernel/ top-level:"
+ls -la "$KERNEL_DIR" | head -30
+echo "[0] kernel/build/:"
+ls "$KERNEL_DIR/build/" 2>&1 | head -10
+echo "[0] kernel/prebuilts/:"
+ls "$KERNEL_DIR/prebuilts/" 2>&1 | head -10
+echo "[0] kernel/prebuilts/clang/host/linux-x86/ (if exists):"
+ls "$KERNEL_DIR/prebuilts/clang/host/linux-x86/" 2>&1 | head -5
+echo "[0] kernel/private/msm-google/ (if exists):"
+ls "$KERNEL_DIR/private/msm-google/" 2>&1 | head -10
+echo "[0] === END DUMP ==="
+
 KERNEL_SRC="$KERNEL_DIR/private/msm-google"
 if [ ! -d "$KERNEL_SRC/arch/arm64/configs" ]; then
   echo "[0] ERROR: $KERNEL_SRC missing or incomplete"
