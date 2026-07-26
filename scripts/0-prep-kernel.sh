@@ -18,10 +18,13 @@ KERNEL_DIR="${KERNEL_DIR:-kernel}"
 # Install repo launcher. apt's repo (2.16 on ubuntu-22.04) lacks
 # --groups. The googleapis launcher auto-fetches current repo main
 # on first invocation (≥2.40 has --groups). Always use launcher.
+# Pin REPO_REV=main so the launcher fetches current, not the cached
+# "stable" branch (which still points at an old snapshot).
 mkdir -p "$HOME/.bin"
 curl -LSso "$HOME/.bin/repo" https://storage.googleapis.com/git-repo-downloads/repo
 chmod +x "$HOME/.bin/repo"
 export PATH="$HOME/.bin:$PATH"
+export REPO_REV=main
 
 rm -rf "$KERNEL_DIR"
 mkdir -p "$KERNEL_DIR"
@@ -30,7 +33,9 @@ cd "$KERNEL_DIR"
 # `--groups all` is required: the coral manifest tags the Clang
 # prebuilt with groups="partner"; default repo sync skips partner
 # projects which silently leaves prebuilts/clang empty.
-repo init -u "$KERNEL_SOURCE_URL" -b "$KERNEL_SOURCE_BRANCH" --depth=1
+# Use --no-repo-verify because googleapis launcher differs from the
+# kernel/manifest's pinned repo hash.
+repo init -u "$KERNEL_SOURCE_URL" -b "$KERNEL_SOURCE_BRANCH" --depth=1 --no-repo-verify
 repo sync -c -j"$(nproc)" --no-tags --groups all 2>&1 | tail -30
 
 # Verify kernel source actually checked out
