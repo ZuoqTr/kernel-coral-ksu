@@ -29,17 +29,6 @@ fi
 # to the cwd's ROOT_DIR.
 cd "$REPO_ROOT/$KERNEL_DIR"
 
-# Debug: confirm patches still in place right before build.sh runs
-echo "[4-debug] Patches still present?"
-for f in fs/exec.c fs/open.c fs/read_write.c fs/stat.c kernel/reboot.c; do
-  if grep -q "ksu_handle_" "$KERNEL_SRC/$f"; then
-    echo "[4-debug]   $f: OK"
-  else
-    echo "[4-debug]   $f: MISSING ksu_handle_"
-  fi
-done
-ls -la "$KERNEL_SRC/kernel/reboot.c"
-
 # Do NOT set CC/HOSTCC here. build.sh's CC_ARG logic does
 #   CC_ARG="CC=${CC} HOSTCC=${CC}"
 # so any CC we export gets mirrored to HOSTCC. kbuild then invokes HOSTCC
@@ -75,41 +64,9 @@ echo "[4] COMMON_OUT_DIR: $COMMON_OUT_DIR"
 echo "[4] final kernel build dir: $COMMON_OUT_DIR/private/msm-google"
 echo "[4] BUILD_CONFIG: $BUILD_CONFIG (resolves to $KERNEL_SRC/build.config.no-cfi)"
 
-# Debug: dump real file content as make will see it. If patches are there,
-# this should show the ksu_handle_ lines.
-echo "[4-debug3] Actual file contents (md5 + head of patch region):"
-md5sum "$KERNEL_SRC/kernel/reboot.c" || true
-echo "[4-debug3] grep -n ksu_handle_sys_reboot:"
-grep -n "ksu_handle_sys_reboot" "$KERNEL_SRC/kernel/reboot.c" || echo "  (no match)"
-echo "[4-debug3] grep -c ksu_handle_sys_reboot:"
-grep -c "ksu_handle_sys_reboot" "$KERNEL_SRC/kernel/reboot.c" || echo "  (no match)"
-
 # build.sh takes no -c/-O flags — only env vars (see build.sh header).
 # Pass only make-side options (LLVM/CC/etc handled inside build.sh).
 bash "$BUILD_SH" -j"$(nproc)" 2>&1 | tee "$REPO_ROOT/$KERNEL_DIR/build.log"
-
-# Secondary debug: what does the Kbuild shell-eval see? Re-run the exact
-# KSU-Next shell expansion OUT-of-the-ksu build, capturing srctree + result.
-echo "[4-debug2] Mimicking Kbuild's \$(shell) eval from private/msm-google:"
-(
-  cd "$KERNEL_SRC"
-  SRCTREE="$(pwd)"
-  echo "[4-debug2]   PWD=$(pwd)"
-  echo "[4-debug2]   SRCTREE=$SRCTREE"
-  echo "[4-debug2]   grep on \$SRCTREE/kernel/reboot.c:"
-  grep -c "ksu_handle_sys_reboot" "$SRCTREE/kernel/reboot.c" || echo "0 (not found)"
-  echo "[4-debug2]   full KSU-Next HAVE_KSU_HOOK eval:"
-  grep -q "ksu_handle_sys_reboot" "$SRCTREE/kernel/reboot.c" && echo 0 || echo 1
-)
-echo "[4-debug2] And from out/private/msm-google (which is where make runs after O=):"
-(
-  cd "$COMMON_OUT_DIR/private/msm-google"
-  SRCTREE="$(pwd)"
-  echo "[4-debug2]   PWD=$(pwd)"
-  echo "[4-debug2]   SRCTREE=$SRCTREE"
-  echo "[4-debug2]   grep on \$SRCTREE/kernel/reboot.c (relative):"
-  grep -c "ksu_handle_sys_reboot" "$SRCTREE/kernel/reboot.c" 2>&1 || echo "(missing file)"
-)
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"
