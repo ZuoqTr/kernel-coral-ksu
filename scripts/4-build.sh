@@ -42,12 +42,15 @@ echo "[4] CROSS_COMPILE_ARM32 probe: $(${CROSS_COMPILE_ARM32}gcc --version | hea
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
 
-# Clang 14 + 4.14 msm arm64 inline asm produces false-positive
-# -Werror=array-bounds (atomic_lse.h:458) and maybe-uninitialized
-# (thread_info.h:108). Same family gcc-11 hit. Suppress just those
-# two — keep -Werror everywhere else so real bugs surface.
-# -Wno-error promotes them to warnings, not errors.
-KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized"
+# Clang 14 + 4.14 msm produces false-positive -Werror failures:
+# - -Werror=array-bounds in atomic_lse.h:458 (arm64 inline asm)
+# - -Werror=maybe-uninitialized in thread_info.h:108 / wext-core.c
+# - -Werror=implicit-int in lpm-levels.c:1443 (missing `int` type
+#   on `static s2idle_sleep_attempts;` — gcc K&R legacy, Clang
+#   C99+ rejects)
+# Same family gcc-11 hit. Suppress just these — keep -Werror for
+# everything else so real bugs surface.
+KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int"
 
 make -j"$(nproc)" \
   O="$OUT_DIR" \

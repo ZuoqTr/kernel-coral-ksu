@@ -38,6 +38,7 @@ jobs:
             clang llvm lld \
             gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
             gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
+            libc6-dev-arm64-cross libc6-dev-armhf-cross \
             libncurses-dev zlib1g-dev ccache
           clang --version | head -1
           # Clang drives compile + assemble + assemble-inline (LLVM_IAS=1).
