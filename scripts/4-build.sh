@@ -37,8 +37,8 @@ export CLANG_TRIPLE=aarch64-linux-gnu-
 cd "$KERNEL_DIR"
 
 echo "[4] Clang: $(clang --version | head -1)"
-echo "[4] GCC 4.9 (64-bit): $($CROSS_COMPILEgcc --version | head -1)"
-echo "[4] GCC 4.9 (32-bit): $(arm-linux-androideabi-gcc --version 2>/dev/null | head -1 || echo 'N/A')"
+echo "[4] GCC 4.9 (64-bit): $(${CROSS_COMPILE}gcc --version | head -1)"
+echo "[4] GCC 4.9 (32-bit): $(${CROSS_COMPILE_ARM32}gcc --version 2>/dev/null | head -1 || echo 'N/A')"
 
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
