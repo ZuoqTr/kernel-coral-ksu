@@ -27,22 +27,5 @@ grep -q "kernelsu/Kconfig" drivers/Kconfig || { echo "[1] drivers/Kconfig missin
 echo "[1] OK: KSU integrated (kprobes mode)"
 ls drivers/kernelsu/ | head -15
 
-# Patch scripts/dtc/dtc-parser.y to make yylloc extern. Clang 12+ default
-# -fno-common causes link failure: yylloc defined in both dtc-parser.tab.o
-# and dtc-lexer.lex.o. bison generates 'int yylloc' as a common tentative
-# def in dtc-parser.tab.c; same in dtc-lexer.lex.c. With -fno-common,
-# both become strong defs and the linker rejects the duplicate.
-# Fix: in dtc-parser.y, add '%code provides' block declaring 'int yylloc'
-# (in parser) and add 'extern int yylloc' at top of dtc-lexer.l so lexer
-# references the parser's instance.
-DTC_PARSER="scripts/dtc/dtc-parser.y"
-DTC_LEXER="scripts/dtc/dtc-lexer.l"
-if [ -f "$DTC_LEXER" ] && ! grep -q "^extern int yylloc" "$DTC_LEXER"; then
-  sed -i '1i extern int yylloc;' "$DTC_LEXER"
-  echo "[1] Patched dtc-lexer.l: extern int yylloc"
-fi
-if [ -f "$DTC_PARSER" ] && ! grep -q "extern int yylloc\|provide.*yylloc" "$DTC_PARSER"; then
-  # Add YYLLOC definition in parser prologue (becomes strong def in .tab.c)
-  sed -i '1i int yylloc;' "$DTC_PARSER"
-  echo "[1] Patched dtc-parser.y: int yylloc (strong def)"
-fi
+# dtc yylloc collision: irrelevant with LLVM=0 (build.sh uses apt gcc
+# for host tools, gcc defaults to -fcommon). No patch needed.

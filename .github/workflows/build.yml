@@ -80,7 +80,7 @@ jobs:
         working-directory: kernel-build
         run: bash scripts/3-configure.sh
 
-      - name: Build kernel (direct make, LLVM=1)
+      - name: Build kernel (direct make, LLVM=0 + CC=clang)
         working-directory: kernel-build
         run: bash scripts/4-build.sh
 
