@@ -15,13 +15,13 @@ KERNEL_SOURCE_URL="${KERNEL_SOURCE_URL:-https://android.googlesource.com/kernel/
 KERNEL_SOURCE_BRANCH="${KERNEL_SOURCE_BRANCH:-android-msm-coral-4.14-android10-qpr3}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 
-# Install repo if missing
-if ! command -v repo >/dev/null; then
-  mkdir -p "$HOME/.bin"
-  curl -LSso "$HOME/.bin/repo" https://storage.googleapis.com/git-repo-downloads/repo
-  chmod +x "$HOME/.bin/repo"
-  export PATH="$HOME/.bin:$PATH"
-fi
+# Install repo launcher. apt's repo (2.16 on ubuntu-22.04) lacks
+# --groups. The googleapis launcher auto-fetches current repo main
+# on first invocation (≥2.40 has --groups). Always use launcher.
+mkdir -p "$HOME/.bin"
+curl -LSso "$HOME/.bin/repo" https://storage.googleapis.com/git-repo-downloads/repo
+chmod +x "$HOME/.bin/repo"
+export PATH="$HOME/.bin:$PATH"
 
 rm -rf "$KERNEL_DIR"
 mkdir -p "$KERNEL_DIR"
