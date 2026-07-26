@@ -49,7 +49,7 @@ echo "[4] Starting build at $(date)"
 # cancels the error elevation. The remaining -Wno-error=* entries
 # below target Clang-specific false positives that don't apply to
 # gcc but won't hurt.
-KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -Wno-error=incompatible-pointer-types -Wno-error=stringop-overflow -Wno-error=stringop-overread -Wno-error=address-of-packed-member -Wno-error=use-after-free -Wno-error=cast-function-type -Wno-error=enum-int-mismatch -Wno-error=enum-conversion -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
+KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -Wno-error=incompatible-pointer-types -Wno-error=stringop-overflow -Wno-error=stringop-overread -Wno-error=address-of-packed-member -Wno-error=cast-function-type -Wno-error=enum-conversion -Wno-error=stringop-truncation -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
 
 # Build target: 'Image' (no dtbs). Image.gz-dtb pulls in DTBO/DTS
 # preprocessing which adds overhead. AK3 on device concatenates
