@@ -58,6 +58,10 @@ export LLVM_IAS=0
 export CLANG_TRIPLE="aarch64-linux-gnu-"
 export CLANG_GCC_TRIPLE="aarch64-linux-gnu-"
 export O="$KERNEL_SRC/$OUT_DIR"
+# Clang 12 strict on outdated 4.14 msm code: -Werror trips on
+# void-pointer-to-enum-cast (mm/rmap.c:1345) and other complaints.
+# KCFLAGS appends to KBUILD_CFLAGS, overriding -Werror for those flags.
+export KCFLAGS="-Wno-error"
 
 cd "$KERNEL_SRC"
 
