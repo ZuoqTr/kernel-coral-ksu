@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run KSU Next setup.sh for legacy branch.
-# Kprobes mode: KSU Next uses CONFIG_KPROBES=y for hook attachment.
-# No manual-hooks kernel patches needed — the kprobes hook mode does
-# the runtime relocation at module-load time.
+# Run KSU Next setup.sh for legacy branch (manual hooks).
+# v3.1.0-legacy-susfs: tag with susfs hooks pre-merged + manual-hooks only.
+# 4.14 msm lacks HAVE_SYSCALL_TRACEPOINTS so kprobes mode is unavailable;
+# we apply manual hooks via patches/ksu-manual-hooks/ in 2-apply-patches.sh.
 set -euo pipefail
 
-KSU_TAG="${KSU_TAG:-v3.1.0-legacy}"
+KSU_TAG="${KSU_TAG:-v3.1.0-legacy-susfs}"
 KSU_SETUP_URL="${KSU_SETUP_URL:-https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh}"
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
@@ -24,8 +24,5 @@ fi
 grep -q "kernelsu/" drivers/Makefile || { echo "[1] drivers/Makefile missing ksu obj"; exit 1; }
 grep -q "kernelsu/Kconfig" drivers/Kconfig || { echo "[1] drivers/Kconfig missing ksu source"; exit 1; }
 
-echo "[1] OK: KSU integrated (kprobes mode)"
+echo "[1] OK: KSU integrated (manual hooks, tag $KSU_TAG)"
 ls drivers/kernelsu/ | head -15
-
-# dtc yylloc collision: irrelevant with LLVM=0 (build.sh uses apt gcc
-# for host tools, gcc defaults to -fcommon). No patch needed.

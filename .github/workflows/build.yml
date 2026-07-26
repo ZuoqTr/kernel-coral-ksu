@@ -23,7 +23,7 @@ jobs:
       KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
       BUILD_ID: QQ3A.200805.001
       KERNEL_DEFCONFIG: floral_defconfig
-      KSU_TAG: v3.1.0-legacy
+      KSU_TAG: v3.1.0-legacy-susfs
       KERNEL_DIR: kernel
       OUT_DIR: out
       AK3_DIR: anykernel3
@@ -72,9 +72,13 @@ jobs:
         working-directory: kernel-build
         run: bash scripts/0c-fetch-gcc.sh
 
-      - name: Setup KSU Next (kprobes mode)
+      - name: Setup KSU Next (manual hooks)
         working-directory: kernel-build
         run: bash scripts/1-setup-ksu.sh
+
+      - name: Apply manual-hooks patches
+        working-directory: kernel-build
+        run: bash scripts/2-apply-patches.sh
 
       - name: Configure kernel
         working-directory: kernel-build

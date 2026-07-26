@@ -39,6 +39,10 @@ fi
 # (LLVM/Clang 12 link uses ld.bfd from aarch64-linux-android-4.9 for
 # LSE atomics + .inst handling). Apt gcc on PATH for HOSTCC.
 export PATH="$CLANG_DIR/bin:$GCC_AARCH64_DIR/bin:$GCC_ARM_DIR/bin:/usr/bin:/usr/bin/aarch64-linux-gnu:$PATH"
+# Point LLVMgold.so discovery at clang's lib dir. Even with LTO disabled
+# (CONFIG_LTO_CLANG=n in 3-configure.sh), some LTO-conditional paths
+# still invoke ld.gold which auto-loads LLVMgold plugin. Belt + braces.
+export LIBRARY_PATH="$CLANG_DIR/lib:${LIBRARY_PATH:-}"
 export CC="clang"
 export CXX="clang++"
 # Apt gcc for HOSTCC (kernel Makefile picks this when LLVM=0).

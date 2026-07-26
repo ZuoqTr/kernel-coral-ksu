@@ -37,7 +37,7 @@ make O="$COMMON_OUT_DIR" ARCH=arm64 olddefconfig 2>&1 | tail -5
 echo "[3] Apply KSU+susfs flags via scripts/config --enable"
 ENABLE_FLAGS=(
   CONFIG_KSU
-  CONFIG_KSU_KPROBES_HOOK
+  CONFIG_KSU_MANUAL_HOOK
   CONFIG_KSU_SUSFS
   CONFIG_KSU_SUSFS_SUS_PATH
   CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -53,13 +53,17 @@ ENABLE_FLAGS=(
   CONFIG_KSU_SUSFS_OPEN_REDIRECT
   CONFIG_KALLSYMS
   CONFIG_KALLSYMS_ALL
-  CONFIG_KPROBES
-  CONFIG_HAVE_KPROBES
 )
 DISABLE_FLAGS=(
-  CONFIG_KSU_MANUAL_HOOK
+  CONFIG_KSU_KPROBES_HOOK
   CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
   CONFIG_KSU_SUSFS_SUS_OVERLAYFS
+  # LTO_CLANG requires LLVMgold.so plugin from clang's lib dir. apt
+  # binutils-aarch64-linux-gnu's ld.gold walks LD_LIBRARY_PATH for it;
+  # easier to drop LTO than wire it up. Kernel size +30s build cost.
+  CONFIG_LTO_CLANG
+  CONFIG_LTO
+  CONFIG_THINLTO
 )
 for f in "${ENABLE_FLAGS[@]}"; do
   ./scripts/config --file "$COMMON_OUT_DIR/.config" --enable "$f" || true
@@ -71,5 +75,5 @@ done
 echo "[3] make O=out olddefconfig (after enabling KSU)"
 make O="$COMMON_OUT_DIR" ARCH=arm64 olddefconfig 2>&1 | tail -5
 
-echo "[3] KSU/kprobes flags in $COMMON_OUT_DIR/.config:"
-grep -E "^CONFIG_KSU|^CONFIG_KPROBES" "$COMMON_OUT_DIR/.config" || echo "  (no KSU/kprobes flags!)"
+echo "[3] KSU/manual-hook flags in $COMMON_OUT_DIR/.config:"
+grep -E "^CONFIG_KSU" "$COMMON_OUT_DIR/.config" || echo "  (no KSU flags!)"

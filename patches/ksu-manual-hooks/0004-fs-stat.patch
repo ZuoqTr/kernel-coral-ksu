@@ -1,0 +1,14 @@
+diff --git a/fs/stat.c b/fs/stat.c
+index 873785dae..600cb5e7f 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -360,6 +360,9 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
+ {
+ 	struct kstat stat;
+ 	int error;
++#ifdef CONFIG_KSU
++	ksu_handle_stat(&dfd, &filename, &flag);
++#endif
+ 
+ 	error = vfs_fstatat(dfd, filename, &stat, flag);
+ 	if (error)

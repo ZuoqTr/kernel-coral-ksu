@@ -1,0 +1,15 @@
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 0da6e4f19..a81f74781 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -572,6 +572,10 @@ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
+ {
+ 	struct fd f = fdget_pos(fd);
+ 	ssize_t ret = -EBADF;
++#ifdef CONFIG_KSU
++	if (unlikely(ksu_vfs_read_hook))
++		ksu_handle_sys_read(fd, &buf, &count);
++#endif
+ 
+ 	if (f.file) {
+ 		loff_t pos = file_pos_read(f.file);

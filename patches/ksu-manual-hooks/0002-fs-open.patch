@@ -1,0 +1,14 @@
+diff --git a/fs/open.c b/fs/open.c
+index c7776aa09..ea53af31b 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -361,6 +361,9 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+  */
+ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ {
++#ifdef CONFIG_KSU
++	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
++#endif
+ 	const struct cred *old_cred;
+ 	struct cred *override_cred;
+ 	struct path path;
