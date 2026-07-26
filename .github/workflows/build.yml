@@ -68,6 +68,10 @@ jobs:
         working-directory: kernel-build
         run: bash scripts/0b-fetch-clang.sh
 
+      - name: Fetch GCC 4.9 prebuilts (aarch64 + arm)
+        working-directory: kernel-build
+        run: bash scripts/0c-fetch-gcc.sh
+
       - name: Setup KSU Next (kprobes mode)
         working-directory: kernel-build
         run: bash scripts/1-setup-ksu.sh

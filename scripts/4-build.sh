@@ -14,22 +14,32 @@ OUT_DIR="${OUT_DIR:-out}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR"
 CLANG_DIR="$REPO_ROOT/kernel-build/clang-r416183b"
+GCC_AARCH64_DIR="$REPO_ROOT/kernel-build/prebuilts/aarch64-linux-android-4.9"
+GCC_ARM_DIR="$REPO_ROOT/kernel-build/prebuilts/arm-linux-androideabi-4.9"
 
 if [ ! -x "$CLANG_DIR/bin/clang" ]; then
   echo "[4] ERROR: $CLANG_DIR/bin/clang missing; run 0b-fetch-clang.sh first"
   exit 1
 fi
 
-# Clang 12 on PATH + aarch64 cross
-export PATH="$CLANG_DIR/bin:/usr/bin:/usr/bin/aarch64-linux-gnu:$PATH"
+if [ ! -x "$GCC_AARCH64_DIR/bin/aarch64-linux-android-gcc" ]; then
+  echo "[4] ERROR: AOSP GCC 4.9 aarch64 missing; run 0c-fetch-gcc.sh first"
+  exit 1
+fi
+
+# Clang 12 + AOSP GCC 4.9 binary binutils on PATH (apt binutils too old
+# for LSE atomics + .inst handling in 4.14 msm)
+export PATH="$CLANG_DIR/bin:$GCC_AARCH64_DIR/bin:$GCC_ARM_DIR/bin:/usr/bin:/usr/bin/aarch64-linux-gnu:$PATH"
 export CC="clang"
 export CXX="clang++"
 export HOSTCC="clang"
 export HOSTCXX="clang++"
 
-# Kernel make vars
+# Kernel make vars. CROSS_COMPILE drives aarch64-linux-android-{gcc,ld,as}.
+# CROSS_COMPILE_ARM32 is the 4.14 msm spelling (NOT _COMPAT) for 32-bit compat vDSO.
 export ARCH=arm64
-export CROSS_COMPILE="aarch64-linux-gnu-"
+export CROSS_COMPILE="aarch64-linux-android-"
+export CROSS_COMPILE_ARM32="arm-linux-androideabi-"
 export LLVM=1
 export LLVM_IAS=1
 export O="$KERNEL_SRC/$OUT_DIR"
@@ -61,7 +71,8 @@ echo "[4] O: $O"
 make -j"$(nproc)" \
   ARCH=arm64 \
   CC=clang \
-  CROSS_COMPILE=aarch64-linux-gnu- \
+  CROSS_COMPILE=aarch64-linux-android- \
+  CROSS_COMPILE_ARM32=arm-linux-androideabi- \
   LLVM=1 \
   LLVM_IAS=1 \
   O="$O" \
