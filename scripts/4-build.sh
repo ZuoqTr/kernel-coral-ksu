@@ -29,16 +29,17 @@ fi
 # to the cwd's ROOT_DIR.
 cd "$REPO_ROOT/$KERNEL_DIR"
 
-# ccache wrap for the kernel-target compiler only. Do NOT wrap HOSTCC/HOSTCXX
-# — kbuild's host-tools rule invokes HOSTCC with flags like -E/-r/-W and
-# passes them straight through; ccache sees those as its own options and
-# errors out (`ccache: invalid option -- 'E'`). HOSTCC clang without ccache
-# is fine; the bulk of compile time is in kernel targets which go via CC.
+# Do NOT set CC/HOSTCC here. build.sh's CC_ARG logic does
+#   CC_ARG="CC=${CC} HOSTCC=${CC}"
+# so any CC we export gets mirrored to HOSTCC. kbuild then invokes HOSTCC
+# with flags like -E/-r/-W (see Makefile.host:102), which ccache misreads
+# as its own options: `ccache: invalid option -- 'E'`. Fix: let build.sh's
+# common.clang set CC=clang directly (without ccache wrap). The kernel
+# compile is still fast on a fresh checkout because most TUs are cached
+# across runs by the GHA actions/cache step on the kernel build dir.
 export CCACHE_DIR="${CCACHE_DIR:-$HOME/.cache/ccache}"
 mkdir -p "$CCACHE_DIR"
-export CC="ccache clang"
-export CXX="ccache clang++"
-unset HOSTCC HOSTCXX  # build.sh's common.clang sets these; we don't override
+unset CC CXX HOSTCC HOSTCXX
 
 # build.sh does NOT parse -c/-O. It reads these from env (or defaults):
 #   BUILD_CONFIG -> defaults to build.config (top-level symlink created by
