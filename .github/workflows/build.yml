@@ -30,7 +30,7 @@ jobs:
         with:
           path: kernel-build
 
-      - name: Install apt deps + clone AOSP GCC 4.9
+      - name: Install apt deps
         run: |
           sudo apt-get update
           sudo apt-get install -y git curl wget build-essential bc flex bison \
@@ -39,20 +39,12 @@ jobs:
             gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
             libc6-dev-arm64-cross libc6-dev-armhf-cross \
             libncurses-dev zlib1g-dev ccache
-          # GCC 4.9 from AOSP for actual compile + link. apt gcc-aarch64
-          # is 11/12, which fails -Werror array-bounds on 4.14 msm. AOSP
-          # 4.9 predates those warnings and has no -mgeneral-regs-only
-          # hard-error for kernel float types. Prebuilts are git repos,
-          # not tarballs — clone the android12L-release branch which is
-          # the last branch that still ships the 4.9 binaries.
-          git clone --depth=1 -b android12L-release \
-            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
-            $GITHUB_WORKSPACE/gcc-64
-          ls $GITHUB_WORKSPACE/gcc-64/bin/ | head -3
-          git clone --depth=1 -b android12L-release \
-            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 \
-            $GITHUB_WORKSPACE/gcc-32
-          ls $GITHUB_WORKSPACE/gcc-32/bin/ | head -3
+          # gcc-aarch64-linux-gnu (gcc 11/12 from apt) is the actual
+          # compiler. Clang 14 has hard errors that gcc doesn't:
+          # -mgeneral-regs-only + float, __bad_copy_to size mismatch.
+          # gcc 11 has -Werror=array-bounds/maybe-uninitialized/etc.
+          # on 4.14 msm inline asm; 4-build.sh KCFLAGS=-Wno-error
+          # suppresses by cancelling the kbuild's -Werror.
 
       - name: Setup ccache
         run: |
