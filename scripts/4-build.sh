@@ -13,6 +13,10 @@ export ARCH=arm64
 export CROSS_COMPILE=aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
 export CC="aarch64-linux-gnu-gcc"
+# GCC 10+ defaults to -fcommon=off; 4.14 dtc has multiple yylloc defs
+# in scripts/dtc (dtc-lexer.lex vs dtc-parser.tab). Force common storage.
+export CFLAGS_host="-fcommon"
+export HOSTCFLAGS="-fcommon"
 
 cd kernel
 
