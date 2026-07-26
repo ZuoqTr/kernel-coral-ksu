@@ -47,6 +47,10 @@ export LLVM_IAS=1
 # not linux-android) because the kernel uses GNU target not bionic.
 export CLANG_TRIPLE="aarch64-linux-gnu-"
 export CLANG_GCC_TRIPLE="aarch64-linux-gnu-"
+# Clang 12 + new binutils default to -fno-common, which trips host dtc
+# link (multiple definition of `yylloc` in dtc-parser.tab.o + dtc-lexer.lex.o).
+# HOSTCFLAGS=-fcommon restores old behavior so flex/bison-generated TUs link.
+export HOSTCFLAGS="-fcommon"
 export O="$KERNEL_SRC/$OUT_DIR"
 
 cd "$KERNEL_SRC"
