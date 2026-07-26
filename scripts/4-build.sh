@@ -29,6 +29,17 @@ fi
 # to the cwd's ROOT_DIR.
 cd "$REPO_ROOT/$KERNEL_DIR"
 
+# Debug: confirm patches still in place right before build.sh runs
+echo "[4-debug] Patches still present?"
+for f in fs/exec.c fs/open.c fs/read_write.c fs/stat.c kernel/reboot.c; do
+  if grep -q "ksu_handle_" "$KERNEL_SRC/$f"; then
+    echo "[4-debug]   $f: OK"
+  else
+    echo "[4-debug]   $f: MISSING ksu_handle_"
+  fi
+done
+ls -la "$KERNEL_SRC/kernel/reboot.c"
+
 # Do NOT set CC/HOSTCC here. build.sh's CC_ARG logic does
 #   CC_ARG="CC=${CC} HOSTCC=${CC}"
 # so any CC we export gets mirrored to HOSTCC. kbuild then invokes HOSTCC
