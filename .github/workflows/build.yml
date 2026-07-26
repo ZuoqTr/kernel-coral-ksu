@@ -21,7 +21,7 @@ jobs:
       KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/msm
       KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
       KERNEL_DEFCONFIG: floral_defconfig
-      KSU_TAG: v3.1.0-legacy-susfs
+      KSU_TAG: v3.1.0-legacy
       KERNEL_DIR: kernel
       OUT_DIR: out
       AK3_DIR: anykernel3
