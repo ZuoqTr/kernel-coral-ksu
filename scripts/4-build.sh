@@ -38,7 +38,7 @@ make -j"$(nproc)" \
   CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
   HOSTCFLAGS="-fcommon" \
   KBUILD_HOSTCFLAGS="-fcommon" \
-  KCFLAGS="-Wno-error=unused-function" \
+  KCFLAGS="-Wno-error=unused-function -Wno-error=array-bounds -Wno-error=maybe-uninitialized" \
   Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
