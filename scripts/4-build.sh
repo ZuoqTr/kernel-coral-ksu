@@ -37,25 +37,37 @@ export CXX="ccache clang++"
 export HOSTCC="ccache clang"
 export HOSTCXX="ccache clang++"
 
+# build.sh does NOT parse -c/-O. It reads these from env (or defaults):
+#   BUILD_CONFIG -> defaults to build.config (top-level symlink created by
+#                   manifest; expands to private/msm-google/build.config.no-cfi)
+#   OUT_DIR      -> COMMON_OUT_DIR; kernel build goes to ${OUT_DIR}/${KERNEL_DIR}
+#                   i.e. ${COMMON_OUT_DIR}/private/msm-google
+#   DIST_DIR     -> default ${OUT_DIR}/dist
+# build.sh passes everything except its own env to the inner `make` calls
+# (line 162: MAKE_ARGS=$*), so don't pass unknown flags here. Only the
+# make-side options belong on the command line.
+COMMON_OUT_DIR="$REPO_ROOT/$KERNEL_DIR/$OUT_DIR"
+export OUT_DIR="$COMMON_OUT_DIR"
+export BUILD_CONFIG="build.config"
+export DIST_DIR="$COMMON_OUT_DIR/dist"
+
 START=$(date +%s)
 echo "[4] build start: $(date)"
 echo "[4] build.sh: $BUILD_SH"
 echo "[4] cwd (ROOT_DIR for _setup_env.sh): $(pwd)"
 echo "[4] KERNEL_SRC (private/msm-google): $KERNEL_SRC"
-echo "[4] OUT_DIR: $REPO_ROOT/$KERNEL_DIR/$OUT_DIR"
+echo "[4] COMMON_OUT_DIR: $COMMON_OUT_DIR"
+echo "[4] final kernel build dir: $COMMON_OUT_DIR/private/msm-google"
+echo "[4] BUILD_CONFIG: $BUILD_CONFIG (resolves to $KERNEL_SRC/build.config.no-cfi)"
 
-# -c must be a path resolvable from the cwd we just cd'd to.
-# Top-level build.config is the symlink the manifest creates.
-bash "$BUILD_SH" \
-  -c "$REPO_ROOT/$KERNEL_DIR/build.config" \
-  -O "$REPO_ROOT/$KERNEL_DIR/$OUT_DIR" \
-  -j"$(nproc)" \
-  2>&1 | tee "$REPO_ROOT/$KERNEL_DIR/build.log"
+# build.sh takes no -c/-O flags — only env vars (see build.sh header).
+# Pass only make-side options (LLVM/CC/etc handled inside build.sh).
+bash "$BUILD_SH" -j"$(nproc)" 2>&1 | tee "$REPO_ROOT/$KERNEL_DIR/build.log"
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"
 
-BOOT="$REPO_ROOT/$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
+BOOT="$COMMON_OUT_DIR/private/msm-google/arch/arm64/boot"
 echo "[4] Built images:"
 ls -lh "$BOOT" | grep -E "Image|dtb|dtbo" || true
 
