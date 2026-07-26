@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Package the kernel image into an AnyKernel3 zip.
-# KERNEL_DIR layout after manifest sync:
-#   kernel/private/msm-google  → kernel source
-#   kernel/out/arch/arm64/boot → Image* artifacts
+# Direct layout: KERNEL_SRC == KERNEL_DIR (no private/msm-google/).
 set -euo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
@@ -10,7 +8,7 @@ OUT_DIR="${OUT_DIR:-out}"
 AK3_DIR="${AK3_DIR:-anykernel3}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-BOOT="$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
+BOOT="$REPO_ROOT/$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
 KERNEL_IMAGE=""
 for img in \
   "$BOOT/Image.gz-dtb" \

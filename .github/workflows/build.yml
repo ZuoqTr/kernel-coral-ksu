@@ -16,9 +16,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
-      KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/manifest
+      # Direct clone of kernel/msm (no manifest). coral 4.14 source.
+      KERNEL_SOURCE_URL: https://android.googlesource.com/kernel/msm
       KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
       BUILD_ID: QQ3A.200805.001
       KERNEL_DEFCONFIG: floral_defconfig
@@ -26,6 +27,12 @@ jobs:
       KERNEL_DIR: kernel
       OUT_DIR: out
       AK3_DIR: anykernel3
+      # Clang 12 (r416183b) — last AOSP Clang that compiles 4.14 msm cleanly.
+      # Clang 14+ rejects __builtin_constant_p stricter and rejects
+      # arch/arm64's `mgeneral-regs-only` differently; 4.14 msm was written
+      # for Clang 12.
+      CLANG_URL: https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r416183b/archive/refs/heads/12.0/linux-x86_64.tar.gz
+      EXTRAVERSION: ${{ github.event.inputs.extraversion }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,7 +42,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git curl wget build-essential bc flex bison \
-            libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 repo \
+            libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
             libncurses-dev zlib1g-dev ccache
 
       - name: Setup ccache
@@ -46,35 +54,29 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: ~/.cache/ccache
-          key: ccache-coral-ksu-${{ github.run_id }}
-          restore-keys: ccache-coral-ksu-
+          path: |
+            ~/.cache/ccache
+            kernel-build/clang-r416183b
+          key: coral-ksu-${{ github.run_id }}
+          restore-keys: coral-ksu-
 
-      - name: Manifest checkout (kernel + prebuilts + build.sh)
+      - name: Clone kernel source (direct git, no manifest)
         working-directory: kernel-build
         run: bash scripts/0-prep-kernel.sh
 
-      - name: Append EXTRAVERSION
-        working-directory: kernel-build/kernel/private/msm-google
-        run: |
-          if ! grep -q "^EXTRAVERSION = " Makefile; then
-            echo 'EXTRAVERSION = ${{ github.event.inputs.extraversion }}' >> Makefile
-          fi
-          grep EXTRAVERSION Makefile | tail -3
+      - name: Fetch Clang 12 toolchain (r416183b)
+        working-directory: kernel-build
+        run: bash scripts/0b-fetch-clang.sh
 
-      - name: Setup KSU Next
+      - name: Setup KSU Next (kprobes mode)
         working-directory: kernel-build
         run: bash scripts/1-setup-ksu.sh
-
-      - name: Apply manual hook patches
-        working-directory: kernel-build
-        run: bash scripts/2-apply-patches.sh
 
       - name: Configure kernel
         working-directory: kernel-build
         run: bash scripts/3-configure.sh
 
-      - name: Build kernel (via manifest build.sh)
+      - name: Build kernel (direct make, LLVM=1)
         working-directory: kernel-build
         run: bash scripts/4-build.sh
 
@@ -83,10 +85,9 @@ jobs:
         run: bash scripts/5-verify-symbols.sh
 
       - name: Locate kernel image
-        working-directory: kernel-build/kernel/out
+        working-directory: kernel-build
         run: |
-          ls -lh arch/arm64/boot/Image* 2>&1 || true
-          file arch/arm64/boot/Image.gz-dtb 2>&1 || true
+          find "$OUT_DIR" -name 'Image.gz-dtb' -o -name 'Image.lz4-dtb' -o -name 'Image' 2>/dev/null | head -5
 
       - name: Package AnyKernel3 zip
         working-directory: kernel-build

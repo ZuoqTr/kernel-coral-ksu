@@ -1,30 +1,27 @@
 #!/usr/bin/env bash
 # Generate .config with KSU+susfs flags, run olddefconfig.
 # KERNEL_DEFCONFIG default = floral_defconfig (coral's defconfig).
-# O=out isolates auto.conf into out/include/config/ — required for
-# 4.14 msm to avoid the silentoldconfig pattern-rule loop in
-# Makefile:619-620 (kbuild re-fires the rule when auto.conf.cmd mtime
-# drifts ahead of .config).
+# O=out isolates auto.conf into out/include/config/.
 #
-# We do NOT append the fragment to ${KERNEL_DEFCONFIG} — build.sh's
-# `check_defconfig` step runs `savedefconfig` and diffs against the
-# pristine defconfig file. Any appended content makes the diff match
-# fail and abort the build. Instead, we use `scripts/config --enable`
-# POST-olddefconfig to add the KSU flags only to the generated .config.
-# The pristine floral_defconfig stays untouched.
+# We do NOT append the fragment to ${KERNEL_DEFCONFIG} — this leaves
+# the pristine defconfig file untouched. Apply KSU flags via
+# `scripts/config --enable` POST-olddefconfig instead. The fragment
+# file lives at kernel-defconfig-fragments/ksu-susfs.config.
 #
-# build.sh from manifest pin handles toolchain (Clang + GCC 4.9).
-# We only need make for the config phases; no C compile happens here.
+# Direct kernel source layout: $KERNEL_DIR/ == kernel root (no
+# private/msm-google/ subdir). With direct git clone of kernel/msm,
+# everything is at top level.
 set -euo pipefail
 
 KERNEL_DEFCONFIG="${KERNEL_DEFCONFIG:-floral_defconfig}"
 OUT_DIR="${OUT_DIR:-out}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR/private/msm-google"
+KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR"
+FRAGMENT="$REPO_ROOT/kernel-defconfig-fragments/ksu-susfs.config"
 
 export ARCH=arm64
-export HOSTCC=clang
+export PATH="/usr/bin:${PATH}"
 
 cd "$KERNEL_SRC"
 
@@ -40,7 +37,7 @@ make O="$COMMON_OUT_DIR" ARCH=arm64 olddefconfig 2>&1 | tail -5
 echo "[3] Apply KSU+susfs flags via scripts/config --enable"
 ENABLE_FLAGS=(
   CONFIG_KSU
-  CONFIG_KSU_MANUAL_HOOK
+  CONFIG_KSU_KPROBES_HOOK
   CONFIG_KSU_SUSFS
   CONFIG_KSU_SUSFS_SUS_PATH
   CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -56,9 +53,11 @@ ENABLE_FLAGS=(
   CONFIG_KSU_SUSFS_OPEN_REDIRECT
   CONFIG_KALLSYMS
   CONFIG_KALLSYMS_ALL
+  CONFIG_KPROBES
+  CONFIG_HAVE_KPROBES
 )
 DISABLE_FLAGS=(
-  CONFIG_KSU_KPROBES_HOOK
+  CONFIG_KSU_MANUAL_HOOK
   CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT
   CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 )
@@ -72,5 +71,5 @@ done
 echo "[3] make O=out olddefconfig (after enabling KSU)"
 make O="$COMMON_OUT_DIR" ARCH=arm64 olddefconfig 2>&1 | tail -5
 
-echo "[3] KSU flags in $COMMON_OUT_DIR/.config:"
-grep -E "^CONFIG_KSU" "$COMMON_OUT_DIR/.config" || echo "  (no CONFIG_KSU flags!)"
+echo "[3] KSU/kprobes flags in $COMMON_OUT_DIR/.config:"
+grep -E "^CONFIG_KSU|^CONFIG_KPROBES" "$COMMON_OUT_DIR/.config" || echo "  (no KSU/kprobes flags!)"

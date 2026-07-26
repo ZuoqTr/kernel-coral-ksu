@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Non-fatal symbol check using KSU's check_symbol tool.
+# Direct layout: KERNEL_SRC == KERNEL_DIR (no private/msm-google/).
 set -uo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 OUT_DIR="${OUT_DIR:-out}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR/private/msm-google"
+KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR"
 
 cd "$KERNEL_SRC"
 
