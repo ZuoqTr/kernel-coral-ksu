@@ -32,8 +32,11 @@ fi
 export PATH="$CLANG_DIR/bin:$GCC_AARCH64_DIR/bin:$GCC_ARM_DIR/bin:/usr/bin:/usr/bin/aarch64-linux-gnu:$PATH"
 export CC="clang"
 export CXX="clang++"
-export HOSTCC="clang"
-export HOSTCXX="clang++"
+# Use apt gcc for host tools (HOSTCC). Clang 12 defaults to -fno-common
+# which breaks flex/bison output in scripts/dtc (yylloc multi-def collision).
+# apt gcc 11.4 still defaults to -fcommon and links host tools cleanly.
+export HOSTCC="gcc"
+export HOSTCXX="g++"
 
 # Kernel make vars. CROSS_COMPILE drives aarch64-linux-android-{gcc,ld,as}.
 # CROSS_COMPILE_ARM32 is the 4.14 msm spelling (NOT _COMPAT) for 32-bit compat vDSO.
@@ -80,12 +83,11 @@ echo "[4] O: $O"
 make -j"$(nproc)" \
   ARCH=arm64 \
   CC=clang \
+  HOSTCC=gcc \
   CROSS_COMPILE=aarch64-linux-android- \
   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
   CLANG_TRIPLE=aarch64-linux-gnu- \
   CLANG_GCC_TRIPLE=aarch64-linux-gnu- \
-  KBUILD_HOSTCFLAGS="-fcommon" \
-  KBUILD_HOSTLDFLAGS="-Wl,--allow-multiple-definition" \
   LLVM=1 \
   LLVM_IAS=1 \
   O="$O" \
