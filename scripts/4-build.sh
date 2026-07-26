@@ -55,6 +55,17 @@ export OUT_DIR="$COMMON_OUT_DIR"
 export BUILD_CONFIG="build.config"
 export DIST_DIR="$COMMON_OUT_DIR/dist"
 
+# Pre-create include/config/auto.conf + auto.conf.cmd so the main compile
+# doesn't enter the silentoldconfig pattern-rule loop. With `-j4`, the
+# default `make` goal first runs `silentoldconfig` which rewrites Makefile,
+# which re-fires silentoldconfig, looping at ~3.5s per iteration. Running
+# `make prepare` once before build.sh forces auto.conf + auto.conf.cmd
+# into existence with stable mtimes; build.sh's subsequent make then sees
+# them and the rule converges on the first iteration.
+KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR/private/msm-google"
+echo "[4] Pre-build: make prepare (stabilizes auto.conf mtimes)"
+(cd "$KERNEL_SRC" && make O="$COMMON_OUT_DIR" ARCH=arm64 prepare 2>&1 | tail -10)
+
 START=$(date +%s)
 echo "[4] build start: $(date)"
 echo "[4] build.sh: $BUILD_SH"
