@@ -29,13 +29,16 @@ fi
 # to the cwd's ROOT_DIR.
 cd "$REPO_ROOT/$KERNEL_DIR"
 
-# ccache wrap
+# ccache wrap for the kernel-target compiler only. Do NOT wrap HOSTCC/HOSTCXX
+# — kbuild's host-tools rule invokes HOSTCC with flags like -E/-r/-W and
+# passes them straight through; ccache sees those as its own options and
+# errors out (`ccache: invalid option -- 'E'`). HOSTCC clang without ccache
+# is fine; the bulk of compile time is in kernel targets which go via CC.
 export CCACHE_DIR="${CCACHE_DIR:-$HOME/.cache/ccache}"
 mkdir -p "$CCACHE_DIR"
 export CC="ccache clang"
 export CXX="ccache clang++"
-export HOSTCC="ccache clang"
-export HOSTCXX="ccache clang++"
+unset HOSTCC HOSTCXX  # build.sh's common.clang sets these; we don't override
 
 # build.sh does NOT parse -c/-O. It reads these from env (or defaults):
 #   BUILD_CONFIG -> defaults to build.config (top-level symlink created by
