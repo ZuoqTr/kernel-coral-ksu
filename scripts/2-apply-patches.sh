@@ -1,30 +1,85 @@
 #!/usr/bin/env bash
-# Apply KernelSU Next manual-hooks patches.
+# Apply KernelSU Next manual-hooks + susfs4ksu integration.
+#
+# Order matters:
+#  1. Setup KSU (handled by 1-setup-ksu.sh — creates drivers/kernelsu symlink)
+#  2. Apply 5 manual-hooks patches (ksu_handle_* externs + calls in syscall sites)
+#  3. Apply susfs4ksu kernel-4.14 patch (modifies fs/, include/, kernel/ files)
+#  4. Copy susfs headers + source files into kernel tree (patch doesn't create them)
+#  5. Apply 10_enable_susfs_for_ksu.patch (KSU internal: Kconfig + susfs ifdefs)
+#
 # v3.1.0-legacy branch uses manual hooks (no kprobes, 4.14 msm lacks
-# HAVE_SYSCALL_TRACEPOINTS). Five kernel syscall sites get ksu_handle_*
-# call insertions, gated on CONFIG_KSU.
+# HAVE_SYSCALL_TRACEPOINTS). Susfs4ksu was originally from
+# https://gitlab.com/simonpunk/susfs4ksu, mirrored at ShirkNeko/susfs4ksu.
 set -euo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR"
-PATCH_DIR="$REPO_ROOT/patches/ksu-manual-hooks"
+HOOK_DIR="$REPO_ROOT/patches/ksu-manual-hooks"
+SUSFS_DIR="$REPO_ROOT/patches/susfs-kernel-4.14"
 
 cd "$KERNEL_SRC"
 
-echo "[2] Applying KSU Next manual-hooks patches..."
-for p in "$PATCH_DIR"/*.patch; do
-  echo "[2]   $p"
+# --- step 1: setup KSU (handled by 1-setup-ksu.sh before this script) ---
+echo "[2a] Verifying drivers/kernelsu symlink exists..."
+test -e drivers/kernelsu || { echo "drivers/kernelsu missing — did 1-setup-ksu.sh run?"; exit 1; }
+grep -q "kernelsu/" drivers/Makefile
+grep -q "drivers/kernelsu/Kconfig" drivers/Kconfig
+
+# --- step 2: manual-hooks patches ---
+echo "[2b] Applying 5 manual-hooks patches..."
+for p in "$HOOK_DIR"/*.patch; do
+  echo "[2b]   $p"
   git apply --verbose "$p" || {
-    echo "[2] FAILED: $p"
+    echo "[2b] FAILED: $p"
     git apply --verbose --ignore-whitespace "$p" || exit 1
   }
 done
 
-echo "[2] Verifying hooks inserted..."
 for f in fs/exec.c fs/open.c fs/read_write.c fs/stat.c kernel/reboot.c; do
   if ! grep -q "ksu_handle_" "$f"; then
-    echo "[2] MISSING hooks in $f"; exit 1
+    echo "[2b] MISSING hooks in $f"; exit 1
   fi
 done
-echo "[2] OK: all 5 manual hooks applied"
+echo "[2b] OK: all 5 manual hooks applied"
+
+# --- step 3: susfs kernel-4.14 patch (modifies existing files) ---
+echo "[2c] Applying susfs4ksu kernel-4.14 patch (50_add_susfs_in_kernel-4.14)..."
+git apply --verbose "$SUSFS_DIR/0001-add-susfs.patch" || {
+  echo "[2c] FAILED: 0001-add-susfs.patch"
+  git apply --verbose --ignore-whitespace "$SUSFS_DIR/0001-add-susfs.patch" || exit 1
+}
+
+# --- step 4: copy susfs source/header files (patch doesn't create them) ---
+echo "[2d] Copying susfs source + header files into kernel tree..."
+mkdir -p include/linux
+cp -v "$SUSFS_DIR/include/linux/susfs.h"     include/linux/susfs.h
+cp -v "$SUSFS_DIR/include/linux/susfs_def.h" include/linux/susfs_def.h
+cp -v "$SUSFS_DIR/include/linux/sus_su.h"    include/linux/sus_su.h
+cp -v "$SUSFS_DIR/fs/susfs.c"                fs/susfs.c
+test -f fs/susfs.c
+echo "[2d] OK: susfs.h + susfs_def.h + sus_su.h + fs/susfs.c staged"
+
+# --- step 5: KSU Next susfs integration (Kconfig + susfs ifdefs in KSU files) ---
+# 0002 patch targets `kernel/*` paths — i.e. the KSU cloned repo at
+# KernelSU-Next/kernel/. Rewrite to `drivers/kernelsu/*` (where the symlink lives).
+echo "[2e] Applying susfs4ksu KSU integration (10_enable_susfs_for_ksu)..."
+TMP=$(mktemp -d)
+cp "$SUSFS_DIR/0002-enable-susfs-ksu.patch" "$TMP/ksu.patch"
+sed -i -E 's|^(diff --git a/)kernel/|\1drivers/kernelsu/|g' "$TMP/ksu.patch"
+sed -i -E 's|^--- a/kernel/|--- a/drivers/kernelsu/|g' "$TMP/ksu.patch"
+sed -i -E 's|^\+\+\+ b/kernel/|\+\+\+ b/drivers/kernelsu/|g' "$TMP/ksu.patch"
+
+git apply --verbose "$TMP/ksu.patch" || {
+  echo "[2e] FAILED: 0002-enable-susfs-ksu.patch (after path rewrite)"
+  head -30 "$TMP/ksu.patch"
+  exit 1
+}
+rm -rf "$TMP"
+
+# Sanity: KSU's Kconfig should now expose KSU_SUSFS options
+grep -q "KSU_SUSFS" drivers/kernelsu/Kconfig || {
+  echo "[2e] MISSING KSU_SUSFS in drivers/kernelsu/Kconfig"; exit 1; }
+
+echo "[2] All patches applied successfully"
