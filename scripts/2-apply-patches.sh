@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Apply 5 KSU manual hook patches to the kernel tree.
+# Script runs from REPO_ROOT (workflow working-directory).
+# KERNEL_DIR/kernel-source = $KERNEL_DIR/private/msm-google,
+# so patches at $REPO_ROOT/patches are reached by ../../../patches/
+# (repo-root -> kernel-build -> kernel -> private/msm-google).
 set -euo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 KERNEL_SRC="$KERNEL_DIR/private/msm-google"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$KERNEL_SRC"
 
-for p in ../../patches/ksu-manual-hooks/*.patch; do
+for p in "$REPO_ROOT/patches/ksu-manual-hooks/"*.patch; do
   echo "[2] Applying $(basename "$p")"
   if ! git apply --verbose "$p"; then
     echo "[2] Retrying with --ignore-whitespace"

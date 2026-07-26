@@ -14,6 +14,7 @@ KERNEL_DEFCONFIG="${KERNEL_DEFCONFIG:-floral_defconfig}"
 OUT_DIR="${OUT_DIR:-out}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 KERNEL_SRC="$KERNEL_DIR/private/msm-google"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 export ARCH=arm64
 export HOSTCC=clang
@@ -21,7 +22,7 @@ export HOSTCC=clang
 cd "$KERNEL_SRC"
 
 echo "[3] Appending KSU+susfs fragment to ${KERNEL_DEFCONFIG}"
-cat ../../kernel-defconfig-fragments/ksu-susfs.config >> "arch/arm64/configs/${KERNEL_DEFCONFIG}"
+cat "$REPO_ROOT/kernel-defconfig-fragments/ksu-susfs.config" >> "arch/arm64/configs/${KERNEL_DEFCONFIG}"
 
 echo "[3] make O=out ${KERNEL_DEFCONFIG}"
 rm -rf "$KERNEL_DIR/$OUT_DIR"
