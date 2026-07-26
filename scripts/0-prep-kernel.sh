@@ -11,6 +11,11 @@
 #      expects. We accept whatever compiler config is present.
 set -euo pipefail
 
+# Capture script dir BEFORE any cd — we need the absolute path to
+# scripts/gcc-wrapper-py3.py which lives in the repo, not the kernel
+# clone we cd into below.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 KERNEL_SOURCE_URL="${KERNEL_SOURCE_URL:-https://android.googlesource.com/kernel/msm}"
 KERNEL_SOURCE_BRANCH="${KERNEL_SOURCE_BRANCH:-android-msm-coral-4.14-android10-qpr3}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
@@ -80,7 +85,6 @@ grep -n "^prepare-compiler-check:\|@:" Makefile | head -5 || echo "[0] prepare-c
 # the underlying compiler. The wrapper is only used to translate
 # gcc-specific flags for non-gcc toolchains; with Clang we don't
 # need translation.
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f scripts/gcc-wrapper.py ]; then
   cp "$SCRIPT_DIR/gcc-wrapper-py3.py" scripts/gcc-wrapper.py
   chmod +x scripts/gcc-wrapper.py
