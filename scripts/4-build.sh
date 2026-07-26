@@ -62,8 +62,11 @@ export DIST_DIR="$COMMON_OUT_DIR/dist"
 ARM32_BIN="$REPO_ROOT/$KERNEL_DIR/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin"
 if [ -d "$ARM32_BIN" ]; then
   export PATH="$ARM32_BIN:$PATH"
+  # 4.14 msm's arch/arm64/Makefile:83 reads CROSS_COMPILE_ARM32 (not
+  # CROSS_COMPILE_COMPAT which is the upstream 5.x+ name). Set both.
   export CROSS_COMPILE_COMPAT="arm-linux-androideabi-"
-  echo "[4] CROSS_COMPILE_COMPAT: $CROSS_COMPILE_COMPAT"
+  export CROSS_COMPILE_ARM32="arm-linux-androideabi-"
+  echo "[4] CROSS_COMPILE_ARM32: $CROSS_COMPILE_ARM32"
 fi
 
 # Pre-create include/config/auto.conf + auto.conf.cmd so the main compile
