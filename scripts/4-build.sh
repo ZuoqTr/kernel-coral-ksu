@@ -35,8 +35,15 @@ echo "[4] build.sh: $BUILD_SH"
 echo "[4] KERNEL_SRC: $(pwd)"
 echo "[4] OUT_DIR: $REPO_ROOT/$KERNEL_DIR/$OUT_DIR"
 
+# -c must use the top-level build.config (a symlink the manifest
+# creates at kernel/build.config -> private/msm-google/build.config.no-cfi).
+# build.sh derives ROOT_DIR from dirname(dirname($build_config));
+# passing kernel/private/msm-google/build.config makes ROOT_DIR
+# = kernel/private/msm-google and the . ${ROOT_DIR}/${KERNEL_DIR}/...
+# expansion breaks. The top-level symlink gives ROOT_DIR = kernel
+# (correct) and KERNEL_DIR=private/msm-google (correct).
 bash "$BUILD_SH" \
-  -c "$KERNEL_SRC/build.config" \
+  -c "$REPO_ROOT/$KERNEL_DIR/build.config" \
   -O "$REPO_ROOT/$KERNEL_DIR/$OUT_DIR" \
   -j"$(nproc)" \
   2>&1 | tee "$REPO_ROOT/$KERNEL_DIR/build.log"
