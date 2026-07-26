@@ -42,6 +42,11 @@ export CROSS_COMPILE="aarch64-linux-android-"
 export CROSS_COMPILE_ARM32="arm-linux-androideabi-"
 export LLVM=1
 export LLVM_IAS=1
+# Clang + Android triple. 4.14 msm Makefile:496 requires CLANG_TRIPLE
+# when CC=clang. Triples differ from CROSS_COMPILE prefix (linux-gnu
+# not linux-android) because the kernel uses GNU target not bionic.
+export CLANG_TRIPLE="aarch64-linux-gnu-"
+export CLANG_GCC_TRIPLE="aarch64-linux-gnu-"
 export O="$KERNEL_SRC/$OUT_DIR"
 
 cd "$KERNEL_SRC"
@@ -73,6 +78,8 @@ make -j"$(nproc)" \
   CC=clang \
   CROSS_COMPILE=aarch64-linux-android- \
   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+  CLANG_TRIPLE=aarch64-linux-gnu- \
+  CLANG_GCC_TRIPLE=aarch64-linux-gnu- \
   LLVM=1 \
   LLVM_IAS=1 \
   O="$O" \
