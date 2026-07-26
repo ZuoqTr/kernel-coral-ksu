@@ -73,4 +73,20 @@ PYEOF
 grep -n "if \[ ! -f \$@ \]" Makefile || echo "[0] silentoldconfig patch did NOT apply"
 grep -n "^prepare-compiler-check:\|@:" Makefile | head -5 || echo "[0] prepare-compiler-check stub NOT applied"
 
+# Patch 3/3: scripts/gcc-wrapper.py — kernel's bundled wrapper
+# invoked by kbuild's WRAP rule. The original is Python 2
+# (print >> sys.stderr, bytes iteration). Ubuntu 22.04 has only
+# Python 3.10+. Replace with a pass-through wrapper that just execs
+# the underlying compiler. The wrapper is only used to translate
+# gcc-specific flags for non-gcc toolchains; with Clang we don't
+# need translation.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f scripts/gcc-wrapper.py ]; then
+  cp "$SCRIPT_DIR/gcc-wrapper-py3.py" scripts/gcc-wrapper.py
+  chmod +x scripts/gcc-wrapper.py
+  echo "[0] gcc-wrapper.py replaced with py3 pass-through"
+else
+  echo "[0] gcc-wrapper.py not present, skip"
+fi
+
 echo "[0] prep complete"
