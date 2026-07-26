@@ -1,65 +1,65 @@
 #!/usr/bin/env bash
-# Build kernel using Clang. apt gcc-aarch64-linux-gnu provides the
-# CROSS_COMPILE prefix (kbuild uses it for arch-detection probes in
-# arch/arm64/Makefile:94); the actual compile/assemble/link is Clang +
-# lld. With LLVM=1 + LLVM_IAS=1, Clang assembles inline asm itself
-# (sidesteps the gcc-11/12 -Werror tightening against 4.14 arm64 asm),
-# and lld links against gcc's libgcc.a for compiler-rt intrinsics.
+# Build kernel using AOSP GCC 4.9 (android12L-release branch).
+# 4.14 msm kernel was originally built against this toolchain.
+# Clang 14 hits two hard errors that 4.9 doesn't:
+#   - -mgeneral-regs-only incompatible with float types in
+#     drivers/power/supply/google/google_charger.c (logbuffer_log
+#     macro uses %f format spec)
+#   - __bad_copy_to size mismatch in drivers/platform/msm/ipa
+# GCC 4.9 predates these checks; Clang considered but rejected.
 #
-# HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc
-# has yylloc in two TUs. -fcommon merges into single common storage.
+# HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc has
+# yylloc in two TUs. -fcommon merges into single common storage.
 set -euo pipefail
 
 OUT_DIR="${OUT_DIR:-out}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
+GCC_64_DIR="${GCC_64_DIR:-$GITHUB_WORKSPACE/gcc-64}"
+GCC_32_DIR="${GCC_32_DIR:-$GITHUB_WORKSPACE/gcc-32}"
+
+if [ ! -x "$GCC_64_DIR/bin/aarch64-linux-android-gcc" ]; then
+  echo "[4] ERROR: GCC 4.9 64-bit not at $GCC_64_DIR/bin/aarch64-linux-android-gcc"
+  exit 1
+fi
+if [ ! -x "$GCC_32_DIR/bin/arm-linux-androideabi-gcc" ]; then
+  echo "[4] ERROR: GCC 4.9 32-bit not at $GCC_32_DIR/bin/arm-linux-androideabi-gcc"
+  exit 1
+fi
 
 export ARCH=arm64
-export CROSS_COMPILE=aarch64-linux-gnu-
-export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
+export CROSS_COMPILE="$GCC_64_DIR/bin/aarch64-linux-android-"
+export CROSS_COMPILE_ARM32="$GCC_32_DIR/bin/arm-linux-androideabi-"
 
-export CC="clang"
-export CXX="clang++"
-export LD="ld.lld"
-export AR="llvm-ar"
-export NM="llvm-nm"
-export OBJCOPY="llvm-objcopy"
-export OBJDUMP="llvm-objdump"
-export STRIP="llvm-strip"
-export READELF="llvm-readelf"
-export HOSTCC=clang
-export HOSTCXX="clang++"
+export CC="${CROSS_COMPILE}gcc"
+export CXX="${CROSS_COMPILE}g++"
+export LD="${CROSS_COMPILE}ld"
+export AR="${CROSS_COMPILE}ar"
+export NM="${CROSS_COMPILE}nm"
+export OBJCOPY="${CROSS_COMPILE}objcopy"
+export OBJDUMP="${CROSS_COMPILE}objdump"
+export STRIP="${CROSS_COMPILE}strip"
+export READELF="${CROSS_COMPILE}readelf"
+export HOSTCC=gcc
+export HOSTCXX=g++
 
-export LLVM=1
-export LLVM_IAS=1
-export CLANG_TRIPLE=aarch64-linux-gnu-
+unset LLVM LLVM_IAS CLANG_TRIPLE
 
 cd "$KERNEL_DIR"
 
-echo "[4] Clang: $(clang --version | head -1)"
-echo "[4] CROSS_COMPILE probe: $(${CROSS_COMPILE}gcc --version | head -1)"
-echo "[4] CROSS_COMPILE_ARM32 probe: $(${CROSS_COMPILE_ARM32}gcc --version | head -1)"
+echo "[4] GCC 4.9: $($CC --version | head -1)"
+echo "[4] GCC 4.9 32-bit: $($CROSS_COMPILE_ARM32$CC --version | head -1)"
 
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
 
-# Clang 14 + 4.14 msm produces false-positive -Werror failures:
-# - -Werror=array-bounds in atomic_lse.h:458 (arm64 inline asm)
-# - -Werror=maybe-uninitialized in thread_info.h:108 / wext-core.c
-# - -Werror=implicit-int in lpm-levels.c:1443 (missing `int` type
-#   on `static s2idle_sleep_attempts;` — gcc K&R legacy, Clang
-#   C99+ rejects)
-# Plus Clang 14 with apt libc6-dev-arm64-cross can't find the next
-# limits.h via #include_next (gcc-cross's limits.h has #include_next).
-# Add the cross libc dir behind everything else via -idirafter.
-# Same family gcc-11 hit. Suppress just these — keep -Werror for
-# everything else so real bugs surface.
-KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized -Wno-error=implicit-int -Wno-error=incompatible-pointer-types -idirafter /usr/aarch64-linux-gnu/include -idirafter /usr/arm-linux-gnueabihf/include"
+# GCC 4.9 doesn't have -Wno-error=array-bounds kind of issues that
+# gcc 11+ has. -Werror is harmless here. No -idirafter needed (4.9
+# uses its own limits.h via $GCC_64_DIR/$GCC_32_DIR sysroot).
+KCFLAGS="-Wno-error"
 
-# Build target: 'Image' (no dtbs). 'Image.gz-dtb' pulls in DTBO /
-# DTS preprocessing step which Clang 14 chokes on
-# (Error: pm8150.dtsi:21.1-10 syntax error). The plan/6-package-ak3.sh
-# already handles bare 'Image' as a fallback. AK3 on device concatenates
-# its own DTBs from the vendor ramdisk.
+# Build target: 'Image' (no dtbs). Image.gz-dtb pulls in DTBO/DTS
+# preprocessing which adds overhead. AK3 on device concatenates
+# vendor ramdisk DTBs.
 make -j"$(nproc)" \
   O="$OUT_DIR" \
   ARCH=arm64 \

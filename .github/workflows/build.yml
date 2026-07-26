@@ -30,22 +30,29 @@ jobs:
         with:
           path: kernel-build
 
-      - name: Install Clang + apt deps
+      - name: Install apt deps + clone AOSP GCC 4.9
         run: |
           sudo apt-get update
           sudo apt-get install -y git curl wget build-essential bc flex bison \
             libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 \
-            clang llvm lld \
             gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
             gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
             libc6-dev-arm64-cross libc6-dev-armhf-cross \
             libncurses-dev zlib1g-dev ccache
-          clang --version | head -1
-          # Clang drives compile + assemble + assemble-inline (LLVM_IAS=1).
-          # apt gcc-aarch64-linux-gnu provides CROSS_COMPILE prefix for
-          # kbuild's arch-detection probes only (Makefile:94 + similar).
-          # Actual compile is Clang; -Werror is suppressed by Clang's
-          # different warning set, not gcc's tightened bounds/uninit.
+          # GCC 4.9 from AOSP for actual compile + link. apt gcc-aarch64
+          # is 11/12, which fails -Werror array-bounds on 4.14 msm. AOSP
+          # 4.9 predates those warnings and has no -mgeneral-regs-only
+          # hard-error for kernel float types. Prebuilts are git repos,
+          # not tarballs — clone the android12L-release branch which is
+          # the last branch that still ships the 4.9 binaries.
+          git clone --depth=1 -b android12L-release \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+            $GITHUB_WORKSPACE/gcc-64
+          ls $GITHUB_WORKSPACE/gcc-64/bin/ | head -3
+          git clone --depth=1 -b android12L-release \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 \
+            $GITHUB_WORKSPACE/gcc-32
+          ls $GITHUB_WORKSPACE/gcc-32/bin/ | head -3
 
       - name: Setup ccache
         run: |
