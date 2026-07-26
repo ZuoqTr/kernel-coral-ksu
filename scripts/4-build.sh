@@ -38,7 +38,11 @@ make -j"$(nproc)" \
   CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
   HOSTCFLAGS="-fcommon" \
   KBUILD_HOSTCFLAGS="-fcommon" \
-  KCFLAGS="-Wno-error=unused-function -Wno-error=array-bounds -Wno-error=maybe-uninitialized" \
+  # -Wno-error: 4.14 msm has many known-good patterns that gcc 11/12
+  # flags as warnings. Disabling -Werror entirely is simpler than
+  # enumerating each warning. 4.14 is end-of-life; warnings are
+  # acceptable, hard errors are not.
+  KCFLAGS="-Wno-error" \
   Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
