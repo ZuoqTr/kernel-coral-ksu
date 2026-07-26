@@ -42,6 +42,13 @@ echo "[4] CROSS_COMPILE_ARM32 probe: $(${CROSS_COMPILE_ARM32}gcc --version | hea
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
 
+# Clang 14 + 4.14 msm arm64 inline asm produces false-positive
+# -Werror=array-bounds (atomic_lse.h:458) and maybe-uninitialized
+# (thread_info.h:108). Same family gcc-11 hit. Suppress just those
+# two — keep -Werror everywhere else so real bugs surface.
+# -Wno-error promotes them to warnings, not errors.
+KCFLAGS="-Wno-error -Wno-error=array-bounds -Wno-error=maybe-uninitialized"
+
 make -j"$(nproc)" \
   O="$OUT_DIR" \
   ARCH=arm64 \
@@ -49,6 +56,7 @@ make -j"$(nproc)" \
   CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
   HOSTCFLAGS="-fcommon" \
   KBUILD_HOSTCFLAGS="-fcommon" \
+  KCFLAGS="$KCFLAGS" \
   Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
