@@ -27,8 +27,11 @@ rm -rf "$KERNEL_DIR"
 mkdir -p "$KERNEL_DIR"
 cd "$KERNEL_DIR"
 
+# `--groups all` is required: the coral manifest tags the Clang
+# prebuilt with groups="partner"; default repo sync skips partner
+# projects which silently leaves prebuilts/clang empty.
 repo init -u "$KERNEL_SOURCE_URL" -b "$KERNEL_SOURCE_BRANCH" --depth=1
-repo sync -c -j"$(nproc)" --no-tags
+repo sync -c -j"$(nproc)" --no-tags --groups all 2>&1 | tail -30
 
 # Verify kernel source actually checked out
 KERNEL_SRC="$KERNEL_DIR/private/msm-google"
@@ -55,3 +58,9 @@ echo "[0] GCC 4.9 prebuilt (32-bit):"
 ls prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/ 2>/dev/null | head -3
 
 echo "[0] prep complete: KERNEL_SRC=$KERNEL_SRC"
+echo "[0] Top-level checkout:"
+ls -la "$KERNEL_DIR" | head -25
+echo "[0] prebuilts/clang:"
+ls "$KERNEL_DIR/prebuilts/clang/host/linux-x86/" 2>&1 | head -5 || echo "  (missing)"
+echo "[0] build.sh:"
+ls -la "$KERNEL_DIR/build/build.sh" 2>&1 || echo "  (missing)"
