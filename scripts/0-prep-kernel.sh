@@ -29,6 +29,7 @@ export REPO_REV=main
 rm -rf "$KERNEL_DIR"
 mkdir -p "$KERNEL_DIR"
 cd "$KERNEL_DIR"
+KERNEL_DIR="$(pwd)"  # absolute path for post-sync dump
 
 # `--groups all` is required: the coral manifest tags the Clang
 # prebuilt with groups="partner"; default repo sync skips partner
