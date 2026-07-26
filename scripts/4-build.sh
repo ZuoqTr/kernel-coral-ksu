@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Build kernel using Clang as the compiler driver + AOSP GCC 4.9
-# prebuilt as the linker/libs. The LLVM=1 / LLVM_IAS=1 flags tell
-# 4.14 msm's build system to take Clang-specific paths (asm-generic,
-# etc.). GCC 4.9 is used because it predates the -Werror/array-bounds
-# tightening that GCC 11/12 added against 4.14 arm64 inline asm.
+# Build kernel using Clang. apt gcc-aarch64-linux-gnu provides the
+# CROSS_COMPILE prefix (kbuild uses it for arch-detection probes in
+# arch/arm64/Makefile:94); the actual compile/assemble/link is Clang +
+# lld. With LLVM=1 + LLVM_IAS=1, Clang assembles inline asm itself
+# (sidesteps the gcc-11/12 -Werror tightening against 4.14 arm64 asm),
+# and lld links against gcc's libgcc.a for compiler-rt intrinsics.
 #
 # HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc
 # has yylloc in two TUs. -fcommon merges into single common storage.
@@ -11,12 +12,10 @@ set -euo pipefail
 
 OUT_DIR="${OUT_DIR:-out}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
-GCC_64_DIR="${GCC_64_DIR:-${GITHUB_WORKSPACE:-$(pwd)/..}/gcc-64}"
-GCC_32_DIR="${GCC_32_DIR:-${GITHUB_WORKSPACE:-$(pwd)/..}/gcc-32}"
 
 export ARCH=arm64
-export CROSS_COMPILE="$GCC_64_DIR/bin/aarch64-linux-android-"
-export CROSS_COMPILE_ARM32="$GCC_32_DIR/bin/arm-linux-androideabi-"
+export CROSS_COMPILE=aarch64-linux-gnu-
+export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
 
 export CC="clang"
 export CXX="clang++"
@@ -37,8 +36,8 @@ export CLANG_TRIPLE=aarch64-linux-gnu-
 cd "$KERNEL_DIR"
 
 echo "[4] Clang: $(clang --version | head -1)"
-echo "[4] GCC 4.9 (64-bit): $(${CROSS_COMPILE}gcc --version | head -1)"
-echo "[4] GCC 4.9 (32-bit): $(${CROSS_COMPILE_ARM32}gcc --version 2>/dev/null | head -1 || echo 'N/A')"
+echo "[4] CROSS_COMPILE probe: $(${CROSS_COMPILE}gcc --version | head -1)"
+echo "[4] CROSS_COMPILE_ARM32 probe: $(${CROSS_COMPILE_ARM32}gcc --version | head -1)"
 
 START=$(date +%s)
 echo "[4] Starting build at $(date)"

@@ -25,8 +25,6 @@ jobs:
       KERNEL_DIR: kernel
       OUT_DIR: out
       AK3_DIR: anykernel3
-      GCC_64_DIR: ${{ github.workspace }}/gcc-64
-      GCC_32_DIR: ${{ github.workspace }}/gcc-32
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,10 +36,15 @@ jobs:
           sudo apt-get install -y git curl wget build-essential bc flex bison \
             libssl-dev libelf-dev lz4 lzop cpio unzip zip python3 \
             clang llvm lld \
-            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf \
+            gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
             libncurses-dev zlib1g-dev ccache
           clang --version | head -1
-          # Do NOT install gcc-aarch64-linux-gnu. We use AOSP GCC 4.9 instead.
+          # Clang drives compile + assemble + assemble-inline (LLVM_IAS=1).
+          # apt gcc-aarch64-linux-gnu provides CROSS_COMPILE prefix for
+          # kbuild's arch-detection probes only (Makefile:94 + similar).
+          # Actual compile is Clang; -Werror is suppressed by Clang's
+          # different warning set, not gcc's tightened bounds/uninit.
 
       - name: Setup ccache
         run: |
@@ -51,35 +54,9 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/ccache
-            ${{ github.workspace }}/gcc-64
-            ${{ github.workspace }}/gcc-32
+          path: ~/.cache/ccache
           key: ccache-coral-ksu-${{ github.run_id }}
-          restore-keys: |
-            ccache-coral-ksu-
-            gcc-64-
-            gcc-32-
-
-      - name: Clone GCC 4.9 (64-bit, AOSP android12L-release)
-        run: |
-          if [ ! -d "$GCC_64_DIR/bin" ]; then
-            git clone --depth=1 -b android12L-release \
-              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
-              "$GCC_64_DIR"
-          fi
-          ls "$GCC_64_DIR/bin/" | head -5
-          "$GCC_64_DIR/bin/aarch64-linux-android-gcc" --version | head -1
-
-      - name: Clone GCC 4.9 (32-bit, AOSP android12L-release)
-        run: |
-          if [ ! -d "$GCC_32_DIR/bin" ]; then
-            git clone --depth=1 -b android12L-release \
-              https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 \
-              "$GCC_32_DIR"
-          fi
-          ls "$GCC_32_DIR/bin/" | head -5
-          "$GCC_32_DIR/bin/arm-linux-androideabi-gcc" --version | head -1
+          restore-keys: ccache-coral-ksu-
 
       - name: Clone kernel source
         working-directory: kernel-build
