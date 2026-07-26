@@ -1,28 +1,27 @@
 #!/usr/bin/env bash
-# Fetch AOSP GCC 4.9 prebuilts (aarch64 + arm) at android10-qpr3 release.
-# 4.14 msm's arch/arm64/Makefile:83 requires CROSS_COMPILE_ARM32 for 32-bit
-# compat vDSO. apt arm-linux-androideabi on Ubuntu 22.04 is too old (no
-# LSE atomics, broken .inst handling). Use AOSP prebuilts.
+# Fetch GCC 4.9 cross-compilers for the kernel build.
 #
-# Pinned in kernel/manifest at android-msm-coral-4.14-android10-qpr3;
-# we fetch the same revisions directly via codeload.
+# Why KudProject forks (NOT AOSP prebuilts): the upstream AOSP
+# prebuilts/gcc/linux-x86/{aarch64,arm}/...-4.9 tree at android-10.0.0_r47
+# is **binutils-only** (verified: tarball contains ar/as/ld/nm/strip/objcopy
+# but NO gcc compiler binary). The kernel needs gcc to compile C/asm
+# TUs with CONFIG_LTO_NONE/clang integrated assembler. KudProject forks
+# (KudProject/aarch64-linux-android-4.9.git, KudProject/arm-linux-androideabi-4.9.git)
+# add the gcc compiler binary on top of AOSP's binutils tree.
+#
+# Used as CROSS_COMPILE (aarch64) and CROSS_COMPILE_ARM32 (arm).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PREBUILTS_DIR="$REPO_ROOT/kernel-build/prebuilts"
 
-# android10-qpr3 branch tag for prebuilts (latest r47 in 10.0.0 series)
-GCC_AARCH64_TAG="android-10.0.0_r47"
-GCC_ARM_TAG="android-10.0.0_r47"
-
-# AOSP prebuilt GCC projects (googlesource). Use codeload for direct tar.
 fetch_prebuilt() {
   local name="$1"
   local url="$2"
-  local prefix="$3"  # e.g. aarch64-linux-android-
+  local prefix="$3"
   local dest="$PREBUILTS_DIR/$name"
   if [ -x "$dest/bin/${prefix}gcc" ]; then
-    echo "[0c] $name already extracted"
+    echo "[0c] $name already extracted at $dest/bin/${prefix}gcc"
     return
   fi
   rm -rf "$dest"
@@ -40,16 +39,16 @@ fetch_prebuilt() {
 
 mkdir -p "$PREBUILTS_DIR"
 
-# aarch64-linux-android-4.9 (for CROSS_COMPILE)
+# aarch64-linux-android-4.9 (KudProject fork with gcc compiler)
 fetch_prebuilt "aarch64-linux-android-4.9" \
-  "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/+archive/refs/tags/${GCC_AARCH64_TAG}.tar.gz" \
+  "https://codeload.github.com/KudProject/aarch64-linux-android-4.9/tar.gz/refs/heads/master" \
   "aarch64-linux-android-"
 
-# arm-linux-androideabi-4.9 (for CROSS_COMPILE_ARM32)
+# arm-linux-androideabi-4.9 (KudProject fork with gcc compiler)
 fetch_prebuilt "arm-linux-androideabi-4.9" \
-  "https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/+archive/refs/tags/${GCC_ARM_TAG}.tar.gz" \
+  "https://codeload.github.com/KudProject/arm-linux-androideabi-4.9/tar.gz/refs/heads/master" \
   "arm-linux-androideabi-"
 
-echo "[0c] Prebuilts:"
-ls "$PREBUILTS_DIR/aarch64-linux-android-4.9/bin/" | head -3
-ls "$PREBUILTS_DIR/arm-linux-androideabi-4.9/bin/" | head -3
+echo "[0c] Prebuilts ready:"
+"$PREBUILTS_DIR/aarch64-linux-android-4.9/bin/aarch64-linux-android-gcc" --version | head -1
+"$PREBUILTS_DIR/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc" --version | head -1
