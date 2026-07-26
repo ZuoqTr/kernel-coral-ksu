@@ -3,13 +3,14 @@
 set -uo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
-KERNEL_SRC="$KERNEL_DIR/private/msm-google"
 OUT_DIR="${OUT_DIR:-out}"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR/private/msm-google"
 
 cd "$KERNEL_SRC"
 
-VMLINUX=$(find "$KERNEL_DIR/$OUT_DIR" -name vmlinux -type f 2>/dev/null | head -1)
-KSU_KO=$(find "$KERNEL_DIR/$OUT_DIR" -path "*/kernelsu/kernelsu.ko" 2>/dev/null | head -1)
+VMLINUX=$(find "$REPO_ROOT/$KERNEL_DIR/$OUT_DIR" -name vmlinux -type f 2>/dev/null | head -1)
+KSU_KO=$(find "$REPO_ROOT/$KERNEL_DIR/$OUT_DIR" -path "*/kernelsu/kernelsu.ko" 2>/dev/null | head -1)
 CHK=$(find "$KERNEL_SRC" -path "*/kernelsu/check_symbol" -type f 2>/dev/null | head -1)
 
 echo "[5] vmlinux:     $VMLINUX"

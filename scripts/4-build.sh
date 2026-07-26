@@ -10,8 +10,9 @@ set -euo pipefail
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 OUT_DIR="${OUT_DIR:-out}"
-KERNEL_SRC="$KERNEL_DIR/private/msm-google"
-BUILD_SH="$KERNEL_DIR/build/build.sh"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR/private/msm-google"
+BUILD_SH="$REPO_ROOT/$KERNEL_DIR/build/build.sh"
 
 if [ ! -x "$BUILD_SH" ]; then
   echo "[4] ERROR: $BUILD_SH not found; run 0-prep-kernel.sh first"
@@ -32,18 +33,18 @@ START=$(date +%s)
 echo "[4] build start: $(date)"
 echo "[4] build.sh: $BUILD_SH"
 echo "[4] KERNEL_SRC: $(pwd)"
-echo "[4] OUT_DIR: $KERNEL_DIR/$OUT_DIR"
+echo "[4] OUT_DIR: $REPO_ROOT/$KERNEL_DIR/$OUT_DIR"
 
 bash "$BUILD_SH" \
   -c "$KERNEL_SRC/build.config" \
-  -O "$KERNEL_DIR/$OUT_DIR" \
+  -O "$REPO_ROOT/$KERNEL_DIR/$OUT_DIR" \
   -j"$(nproc)" \
-  2>&1 | tee "$KERNEL_DIR/build.log"
+  2>&1 | tee "$REPO_ROOT/$KERNEL_DIR/build.log"
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"
 
-BOOT="$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
+BOOT="$REPO_ROOT/$KERNEL_DIR/$OUT_DIR/arch/arm64/boot"
 echo "[4] Built images:"
 ls -lh "$BOOT" | grep -E "Image|dtb|dtbo" || true
 
