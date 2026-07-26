@@ -1,48 +1,55 @@
 #!/usr/bin/env bash
-# Build kernel O=out (matches 3-configure.sh).
-# 4.14 msm has a Makefile:619 pattern rule
-#   include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd
-# that re-fires silentoldconfig whenever the build itself rewrites
-# auto.conf.cmd (which it does constantly during dependency tracking).
-# -W include/config/auto.conf tells make to treat auto.conf as just
-# modified, breaking the pattern rule's dependency check.
+# Build kernel using Clang as the compiler driver + AOSP GCC 4.9
+# prebuilt as the linker/libs. The LLVM=1 / LLVM_IAS=1 flags tell
+# 4.14 msm's build system to take Clang-specific paths (asm-generic,
+# etc.). GCC 4.9 is used because it predates the -Werror/array-bounds
+# tightening that GCC 11/12 added against 4.14 arm64 inline asm.
+#
+# HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc
+# has yylloc in two TUs. -fcommon merges into single common storage.
 set -euo pipefail
 
 OUT_DIR="${OUT_DIR:-out}"
+KERNEL_DIR="${KERNEL_DIR:-kernel}"
+GCC_64_DIR="${GCC_64_DIR:-${GITHUB_WORKSPACE:-$(pwd)/..}/gcc-64}"
+GCC_32_DIR="${GCC_32_DIR:-${GITHUB_WORKSPACE:-$(pwd)/..}/gcc-32}"
+
 export ARCH=arm64
-export CROSS_COMPILE=aarch64-linux-gnu-
-export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
-export CC="aarch64-linux-gnu-gcc"
+export CROSS_COMPILE="$GCC_64_DIR/bin/aarch64-linux-android-"
+export CROSS_COMPILE_ARM32="$GCC_32_DIR/bin/arm-linux-androideabi-"
 
-cd kernel
+export CC="clang"
+export CXX="clang++"
+export LD="ld.lld"
+export AR="llvm-ar"
+export NM="llvm-nm"
+export OBJCOPY="llvm-objcopy"
+export OBJDUMP="llvm-objdump"
+export STRIP="llvm-strip"
+export READELF="llvm-readelf"
+export HOSTCC=clang
+export HOSTCXX="clang++"
 
-echo "[4] gcc version:"
-aarch64-linux-gnu-gcc --version | head -1
+export LLVM=1
+export LLVM_IAS=1
+export CLANG_TRIPLE=aarch64-linux-gnu-
+
+cd "$KERNEL_DIR"
+
+echo "[4] Clang: $(clang --version | head -1)"
+echo "[4] GCC 4.9 (64-bit): $($CROSS_COMPILEgcc --version | head -1)"
+echo "[4] GCC 4.9 (32-bit): $(arm-linux-androideabi-gcc --version 2>/dev/null | head -1 || echo 'N/A')"
 
 START=$(date +%s)
 echo "[4] Starting build at $(date)"
 
-# -W include/config/auto.conf: pretend auto.conf was just modified so
-# the Makefile:619 pattern rule does not re-evaluate. This is the
-# documented workaround for the 4.14 silentoldconfig infinite loop.
-#
-# HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc
-# (dtc-lexer.lex + dtc-parser.tab) has yylloc in two TUs. -fcommon
-# merges into single common storage. -Wno-error=unused-function
-# silences the Werror upgrade for do_typec_entry in file2alias.c.
 make -j"$(nproc)" \
-  -W "$OUT_DIR/include/config/auto.conf" \
   O="$OUT_DIR" \
   ARCH=arm64 \
-  CROSS_COMPILE=aarch64-linux-gnu- \
-  CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
+  CROSS_COMPILE="$CROSS_COMPILE" \
+  CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
   HOSTCFLAGS="-fcommon" \
   KBUILD_HOSTCFLAGS="-fcommon" \
-  # -Wno-error: 4.14 msm has many known-good patterns that gcc 11/12
-  # flags as warnings. Disabling -Werror entirely is simpler than
-  # enumerating each warning. 4.14 is end-of-life; warnings are
-  # acceptable, hard errors are not.
-  KCFLAGS="-Wno-error" \
   Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
