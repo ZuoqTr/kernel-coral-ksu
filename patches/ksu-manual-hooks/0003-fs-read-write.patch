@@ -1,8 +1,17 @@
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 0da6e4f19..a81f74781 100644
+index 0da6e4f19..c5f9ed2a6 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -572,6 +572,10 @@ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
+@@ -568,10 +568,19 @@ static inline void file_pos_write(struct file *file, loff_t pos)
+ 		file->f_pos = pos;
+ }
+ 
++#ifdef CONFIG_KSU
++extern bool ksu_vfs_read_hook __read_mostly;
++extern int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr, size_t *count_ptr);
++#endif
++
+ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
  {
  	struct fd f = fdget_pos(fd);
  	ssize_t ret = -EBADF;

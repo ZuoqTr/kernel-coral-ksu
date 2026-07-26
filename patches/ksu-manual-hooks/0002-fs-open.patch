@@ -1,9 +1,16 @@
 diff --git a/fs/open.c b/fs/open.c
-index c7776aa09..ea53af31b 100644
+index c7776aa09..28ef921c9 100644
 --- a/fs/open.c
 +++ b/fs/open.c
-@@ -361,6 +361,9 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+@@ -359,8 +359,16 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+  * We do this by temporarily clearing all FS-related capabilities and
+  * switching the fsuid/fsgid around to the real ones.
   */
++#ifdef CONFIG_KSU
++extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
++				int *mode, int *flags);
++#endif
++
  SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
  {
 +#ifdef CONFIG_KSU
