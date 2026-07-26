@@ -13,10 +13,6 @@ export ARCH=arm64
 export CROSS_COMPILE=aarch64-linux-gnu-
 export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
 export CC="aarch64-linux-gnu-gcc"
-# GCC 10+ defaults to -fcommon=off; 4.14 dtc has multiple yylloc defs
-# in scripts/dtc (dtc-lexer.lex vs dtc-parser.tab). Force common storage.
-export CFLAGS_host="-fcommon"
-export HOSTCFLAGS="-fcommon"
 
 cd kernel
 
@@ -29,12 +25,20 @@ echo "[4] Starting build at $(date)"
 # -W include/config/auto.conf: pretend auto.conf was just modified so
 # the Makefile:619 pattern rule does not re-evaluate. This is the
 # documented workaround for the 4.14 silentoldconfig infinite loop.
+#
+# HOSTCFLAGS=-fcommon: GCC 10+ defaults to -fno-common; 4.14 dtc
+# (dtc-lexer.lex + dtc-parser.tab) has yylloc in two TUs. -fcommon
+# merges into single common storage. -Wno-error=unused-function
+# silences the Werror upgrade for do_typec_entry in file2alias.c.
 make -j"$(nproc)" \
   -W "$OUT_DIR/include/config/auto.conf" \
   O="$OUT_DIR" \
   ARCH=arm64 \
   CROSS_COMPILE=aarch64-linux-gnu- \
   CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
+  HOSTCFLAGS="-fcommon" \
+  KBUILD_HOSTCFLAGS="-fcommon" \
+  KCFLAGS="-Wno-error=unused-function" \
   Image.gz-dtb 2>&1 | tee ../build.log
 
 END=$(date +%s)
