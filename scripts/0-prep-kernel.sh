@@ -62,7 +62,7 @@ grep -n "conf.stamp" Makefile || echo "[0] patch did NOT apply"
 # since the original has 3 incompatible constructs.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -f scripts/gcc-wrapper.py ]; then
-  cp "$SCRIPT_DIR/gcc-wrapper-py3.py" scripts/gcc-wrapper.py
+  cp "../scripts/gcc-wrapper-py3.py" scripts/gcc-wrapper.py
   chmod +x scripts/gcc-wrapper.py
   echo "[0] gcc-wrapper.py replaced with py3 port"
 else
