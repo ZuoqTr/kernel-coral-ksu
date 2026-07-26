@@ -68,3 +68,14 @@ if [ -f scripts/gcc-wrapper.py ]; then
 else
   echo "[0] gcc-wrapper.py not present (legacy kbuild path), skip"
 fi
+
+# Disable kbuild's -Werror injection. 4.14 msm hard-codes
+# KBUILD_CFLAGS += -Werror in scripts/Makefile.build. gcc 11/12
+# produce many false-positive warnings on 4.14 arm64 code; treating
+# as errors blocks every build. CONFIG_WERROR is not in 4.14
+# Kconfig, so the only way out is to patch the Makefile.
+# Use a benign -Wno-error flag that survives Makefile.build's
+# KBUILD_CFLAGS composition.
+sed -i 's|-Werror|-Wno-error|g' scripts/Makefile.build
+echo "[0] -Werror -> -Wno-error in scripts/Makefile.build"
+grep -c "\-Wno-error" scripts/Makefile.build
