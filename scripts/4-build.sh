@@ -84,6 +84,8 @@ make -j"$(nproc)" \
   CROSS_COMPILE_ARM32=arm-linux-androideabi- \
   CLANG_TRIPLE=aarch64-linux-gnu- \
   CLANG_GCC_TRIPLE=aarch64-linux-gnu- \
+  KBUILD_HOSTCFLAGS="-fcommon" \
+  KBUILD_HOSTLDFLAGS="-Wl,--allow-multiple-definition" \
   LLVM=1 \
   LLVM_IAS=1 \
   O="$O" \
