@@ -54,3 +54,25 @@ else:
 PYEOF
 
 grep -n "conf.stamp" Makefile || echo "[0] patch did NOT apply"
+
+# Patch scripts/gcc-wrapper.py Python 2 -> Python 3 print statement.
+# KernelSU Next's setup.sh creates this wrapper (it's referenced via
+# gcc-plugin mechanism). Ubuntu 22.04 ships Python 3.10+; the
+# `print >> sys.stderr, line` syntax is Python 2 only and crashes
+# the wrapper at first invocation, breaking every aarch64 compile.
+python3 - <<'PYEOF'
+import pathlib
+p = pathlib.Path("scripts/gcc-wrapper.py")
+if not p.exists():
+    print("[0] gcc-wrapper.py not present, skip")
+else:
+    src = p.read_text()
+    old = "print >> sys.stderr, line,"
+    new = "print(line, file=sys.stderr, end='')"
+    if old in src:
+        src = src.replace(old, new, 1)
+        p.write_text(src)
+        print("[0] gcc-wrapper.py patched to Python 3")
+    else:
+        print("[0] gcc-wrapper.py already patched or different syntax")
+PYEOF
