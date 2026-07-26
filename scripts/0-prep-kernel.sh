@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Clone coral kernel source tree at the exact branch.
+# Clone coral kernel source tree at the exact branch and patch the
+# 4.14 silentoldconfig-loop pattern rule in Makefile.
 set -euo pipefail
 
 KERNEL_SOURCE_URL="${KERNEL_SOURCE_URL:-https://android.googlesource.com/kernel/msm}"
@@ -14,3 +15,42 @@ echo "[0] Available defconfigs:"
 ls arch/arm64/configs/ | grep -E 'defconfig$' || true
 echo "[0] Available vendor defconfigs:"
 ls arch/arm64/configs/vendor/ 2>/dev/null | grep -E 'defconfig$' || true
+
+# Patch Makefile:619 silentoldconfig pattern rule with a stamp-file
+# guard to break the 4.14 msm infinite loop.
+#
+# Original (lines 619-620):
+#   include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd
+#           $(Q)$(MAKE) -f $(srctree)/Makefile silentoldconfig
+#
+# The pattern rule re-fires every time the build rewrites
+# include/config/auto.conf.cmd (which kbuild does constantly during
+# dependency tracking) because the sub-make's regeneration of
+# auto.conf.cmd makes it newer than auto.conf, retriggering the
+# pattern rule.
+#
+# Replacement: gate the recipe on a stamp file. After the first
+# silentoldconfig invocation (from configure.sh), the stamp exists;
+# the recipe check prevents re-running. The pattern rule's prereqs
+# remain auto.conf.cmd, so make still sees the dep — but the recipe
+# short-circuits when the stamp is current.
+echo "[0] Patching Makefile:619 pattern-rule loop guard"
+python3 - <<'PYEOF'
+import pathlib
+p = pathlib.Path("Makefile")
+src = p.read_text()
+old = ("include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd\n"
+       "\t$(Q)$(MAKE) -f $(srctree)/Makefile silentoldconfig\n")
+new = ("include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd\n"
+       "\t@if [ ! -f $@ ]; then \\\n"
+       "\t\t$(Q)$(MAKE) -f $(srctree)/Makefile silentoldconfig; \\\n"
+       "\tfi\n")
+if old not in src:
+    print("[0] WARN: Makefile pattern not found verbatim; skipping patch", flush=True)
+else:
+    src = src.replace(old, new, 1)
+    p.write_text(src)
+    print("[0] Makefile pattern patched", flush=True)
+PYEOF
+
+grep -n "conf.stamp" Makefile || echo "[0] patch did NOT apply"

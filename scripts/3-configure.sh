@@ -25,6 +25,20 @@ rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 make O="$OUT_DIR" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- "$KERNEL_DEFCONFIG" 2>&1 | tail -5
 
+# Run silentoldconfig so include/config/auto.conf + auto.conf.cmd are
+# generated. The Makefile:619 pattern rule (patched in 0-prep-kernel.sh)
+# is what normally produces these, but we want them written BEFORE the
+# build starts so the patched recipe's `[ ! -f $@ ]` guard short-circuits
+# on the first pattern-rule invocation during the build.
+echo "[3] make O=out silentoldconfig (writes include/config/auto.conf)"
+make O="$OUT_DIR" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- silentoldconfig 2>&1 | tail -5
+
+# Pre-create conf.stamp so the Makefile:619 pattern rule's recipe
+# short-circuits during the build (see 0-prep-kernel.sh patch).
+echo "[3] Pre-creating include/config/conf.stamp"
+mkdir -p "$OUT_DIR/include/config"
+touch "$OUT_DIR/include/config/conf.stamp"
+
 # Done. Do NOT run olddefconfig/silentoldconfig separately; the O=out
 # build's implicit silentoldconfig pass during compile handles any drift
 # in a single pass without the recursive-loop pattern.
