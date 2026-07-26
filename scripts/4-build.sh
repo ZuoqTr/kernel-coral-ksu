@@ -55,6 +55,17 @@ export OUT_DIR="$COMMON_OUT_DIR"
 export BUILD_CONFIG="build.config"
 export DIST_DIR="$COMMON_OUT_DIR/dist"
 
+# coral's arch/arm64/Makefile requires CROSS_COMPILE_COMPAT for the
+# 32-bit compat vDSO (used for 32-on-64 syscalls). The manifest pins
+# arm-linux-androideabi-4.9 at pie-release; prepend it to PATH so the
+# cross-prefix is reachable by `arm-linux-androideabi-*` invocations.
+ARM32_BIN="$REPO_ROOT/$KERNEL_DIR/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin"
+if [ -d "$ARM32_BIN" ]; then
+  export PATH="$ARM32_BIN:$PATH"
+  export CROSS_COMPILE_COMPAT="arm-linux-androideabi-"
+  echo "[4] CROSS_COMPILE_COMPAT: $CROSS_COMPILE_COMPAT"
+fi
+
 # Pre-create include/config/auto.conf + auto.conf.cmd so the main compile
 # doesn't enter the silentoldconfig pattern-rule loop. With `-j4`, the
 # default `make` goal first runs `silentoldconfig` which rewrites Makefile,
