@@ -19,7 +19,15 @@ if [ ! -x "$BUILD_SH" ]; then
   exit 1
 fi
 
-cd "$KERNEL_SRC"
+# build.sh's _setup_env.sh does `export ROOT_DIR=$PWD` — overwrites the
+# ROOT_DIR that build.sh set from $(dirname $0). So PWD at the moment
+# _setup_env.sh runs MUST be the manifest root (the dir holding build.config
+# symlink + private/ + prebuilts*/), not the kernel source dir.
+# The build.config symlink at kernel/build.config ->
+# private/msm-google/build.config.no-cfi is what makes this work; the
+# KERNEL_DIR=private/msm-google line inside the .no-cfi file expands relative
+# to the cwd's ROOT_DIR.
+cd "$REPO_ROOT/$KERNEL_DIR"
 
 # ccache wrap
 export CCACHE_DIR="${CCACHE_DIR:-$HOME/.cache/ccache}"
@@ -32,16 +40,12 @@ export HOSTCXX="ccache clang++"
 START=$(date +%s)
 echo "[4] build start: $(date)"
 echo "[4] build.sh: $BUILD_SH"
-echo "[4] KERNEL_SRC: $(pwd)"
+echo "[4] cwd (ROOT_DIR for _setup_env.sh): $(pwd)"
+echo "[4] KERNEL_SRC (private/msm-google): $KERNEL_SRC"
 echo "[4] OUT_DIR: $REPO_ROOT/$KERNEL_DIR/$OUT_DIR"
 
-# -c must use the top-level build.config (a symlink the manifest
-# creates at kernel/build.config -> private/msm-google/build.config.no-cfi).
-# build.sh derives ROOT_DIR from dirname(dirname($build_config));
-# passing kernel/private/msm-google/build.config makes ROOT_DIR
-# = kernel/private/msm-google and the . ${ROOT_DIR}/${KERNEL_DIR}/...
-# expansion breaks. The top-level symlink gives ROOT_DIR = kernel
-# (correct) and KERNEL_DIR=private/msm-google (correct).
+# -c must be a path resolvable from the cwd we just cd'd to.
+# Top-level build.config is the symlink the manifest creates.
 bash "$BUILD_SH" \
   -c "$REPO_ROOT/$KERNEL_DIR/build.config" \
   -O "$REPO_ROOT/$KERNEL_DIR/$OUT_DIR" \
