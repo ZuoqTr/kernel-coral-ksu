@@ -13,6 +13,7 @@ System.map
 *.log
 out/
 kernel/
+kernel-test/
 .DS_Store
 build.log
 AnyKernel3-coral-*.zip
