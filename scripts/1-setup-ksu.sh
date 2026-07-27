@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Setup KSU Next from sidex15 fork (legacy-susfs-v2 branch).
-# sidex15's setup.sh hardcodes OWNER="KernelSU-Next" — we patch it to sidex15
-# before piping into bash.
+# Bypasses sidex15's setup.sh (which uses git pull + checkout that can lose
+# local refs). Instead: shallow clone with --branch flag, copy kernel/ into
+# drivers/kernelsu, integrate Makefile/Kconfig entries.
 #
 # Why sidex15 fork: upstream KSU Next `next` branch / `v3.1.0-legacy-susfs` tag
 # has its own in-module susfs surface (kernel_umount.c, su_mount_ns.c) that
@@ -13,30 +14,57 @@
 set -euo pipefail
 
 KSU_OWNER="${KSU_OWNER:-sidex15}"
+KSU_REPO="${KSU_REPO:-KernelSU-Next}"
 KSU_TAG="${KSU_TAG:-legacy-susfs-v2}"
-KSU_SETUP_URL="${KSU_SETUP_URL:-https://raw.githubusercontent.com/${KSU_OWNER}/KernelSU-Next/next/kernel/setup.sh}"
 
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR"
+KSU_TMP="/tmp/${KSU_REPO}-${KSU_TAG}"
+KSU_URL="https://github.com/${KSU_OWNER}/${KSU_REPO}.git"
 
 cd "$KERNEL_SRC"
 
-echo "[1] Running KSU setup for ${KSU_OWNER}/KernelSU-Next @ ${KSU_TAG}"
-# Fetch sidex15 setup.sh, patch OWNER to sidex15 (it hardcodes KernelSU-Next).
-TMP_SETUP=$(mktemp)
-curl -LSs "$KSU_SETUP_URL" -o "$TMP_SETUP"
-# Replace OWNER="KernelSU-Next" with sidex15 (or whatever KSU_OWNER is).
-sed -i.bak "s|^OWNER=.*|OWNER=\"${KSU_OWNER}\"|" "$TMP_SETUP"
-bash "$TMP_SETUP" "$KSU_TAG"
-rm -f "$TMP_SETUP" "$TMP_SETUP.bak"
+echo "[1] Cloning ${KSU_URL} @ ${KSU_TAG}..."
+rm -rf "$KSU_TMP"
+git clone --depth=1 --branch "$KSU_TAG" "$KSU_URL" "$KSU_TMP" 2>&1 | tail -3
 
-echo "[1] Verifying KSU integration..."
-if [ ! -e drivers/kernelsu ]; then
-  echo "[1] ERROR: drivers/kernelsu missing"; exit 1
+# Clean stale drivers/kernelsu if present (from prior runs).
+rm -rf drivers/kernelsu
+
+# Copy KSU Next kernel/ into drivers/kernelsu. sidex15 layout has subdirs
+# (core/, hook/, etc.) — copy wholesale.
+echo "[1] Copying KSU Next kernel/ → drivers/kernelsu/..."
+mkdir -p drivers/kernelsu
+cp -R "$KSU_TMP/kernel/." drivers/kernelsu/
+
+# Drop setup.sh + build-all.sh + .vscode (out-of-tree build scripts).
+rm -f drivers/kernelsu/setup.sh drivers/kernelsu/build-all.sh
+rm -rf drivers/kernelsu/.vscode
+
+# Integrate into drivers/Makefile + drivers/Kconfig if not already.
+echo "[1] Integrating into drivers/Makefile + drivers/Kconfig..."
+if ! grep -q "kernelsu/" drivers/Makefile; then
+  printf '\nobj-$(CONFIG_KSU)\t\t+= kernelsu/\n' >> drivers/Makefile
+  echo "[1] Added KSU to drivers/Makefile"
 fi
-grep -q "kernelsu/" drivers/Makefile || { echo "[1] drivers/Makefile missing ksu obj"; exit 1; }
-grep -q "kernelsu/Kconfig" drivers/Kconfig || { echo "[1] drivers/Kconfig missing ksu source"; exit 1; }
+if ! grep -q "drivers/kernelsu/Kconfig" drivers/Kconfig; then
+  python3 -c "
+p='drivers/Kconfig'
+s=open(p).read()
+s=s.replace('source \"drivers/esoc/Kconfig\"\n\nendmenu\n',
+            'source \"drivers/esoc/Kconfig\"\n\nsource \"drivers/kernelsu/Kconfig\"\n\nendmenu\n', 1)
+open(p,'w').write(s)
+"
+  echo "[1] Added KSU source to drivers/Kconfig"
+fi
 
-echo "[1] OK: KSU integrated (sidex15/${KSU_TAG}, manual hooks)"
+echo "[1] Verifying..."
+test -e drivers/kernelsu/Kconfig || { echo "[1] ERROR: Kconfig missing"; exit 1; }
+test -e drivers/kernelsu/Makefile || { echo "[1] ERROR: Makefile missing"; exit 1; }
+test -e drivers/kernelsu/Kbuild || { echo "[1] ERROR: Kbuild missing"; exit 1; }
+grep -q "config KSU_SUSFS" drivers/kernelsu/Kconfig || { echo "[1] KSU_SUSFS missing in Kconfig"; exit 1; }
+
+echo "[1] OK: KSU integrated (${KSU_OWNER}/${KSU_TAG})"
+echo "[1] drivers/kernelsu contents:"
 ls drivers/kernelsu/ | head -15
