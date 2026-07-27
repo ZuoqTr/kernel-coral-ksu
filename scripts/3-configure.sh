@@ -3,10 +3,9 @@
 # KERNEL_DEFCONFIG default = floral_defconfig (coral's defconfig).
 # O=out isolates auto.conf into out/include/config/.
 #
-# We do NOT append the fragment to ${KERNEL_DEFCONFIG} — this leaves
-# the pristine defconfig file untouched. Apply KSU flags via
-# `scripts/config --enable` POST-olddefconfig instead. The fragment
-# file lives at kernel-defconfig-fragments/ksu-susfs.config.
+# KSU + susfs flags applied via `scripts/config --enable` POST-olddefconfig.
+# The fragment file lives at kernel-defconfig-fragments/ksu-susfs.config
+# (informational; not appended to defconfig because order-dependent).
 #
 # Direct kernel source layout: $KERNEL_DIR/ == kernel root (no
 # private/msm-google/ subdir). With direct git clone of kernel/msm,
@@ -18,7 +17,6 @@ OUT_DIR="${OUT_DIR:-out}"
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KERNEL_SRC="$REPO_ROOT/$KERNEL_DIR"
-FRAGMENT="$REPO_ROOT/kernel-defconfig-fragments/ksu-susfs.config"
 
 export ARCH=arm64
 export PATH="/usr/bin:${PATH}"
@@ -51,6 +49,7 @@ ENABLE_FLAGS=(
   CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
   CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
   CONFIG_KSU_SUSFS_OPEN_REDIRECT
+  CONFIG_KSU_SUSFS_SUS_SU
   CONFIG_KALLSYMS
   CONFIG_KALLSYMS_ALL
 )
@@ -75,5 +74,5 @@ done
 echo "[3] make O=out olddefconfig (after enabling KSU)"
 make O="$COMMON_OUT_DIR" ARCH=arm64 olddefconfig 2>&1 | tail -5
 
-echo "[3] KSU/manual-hook flags in $COMMON_OUT_DIR/.config:"
+echo "[3] KSU/susfs flags in $COMMON_OUT_DIR/.config:"
 grep -E "^CONFIG_KSU" "$COMMON_OUT_DIR/.config" || echo "  (no KSU flags!)"

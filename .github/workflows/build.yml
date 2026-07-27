@@ -23,7 +23,8 @@ jobs:
       KERNEL_SOURCE_BRANCH: android-msm-coral-4.14-android10-qpr3
       BUILD_ID: QQ3A.200805.001
       KERNEL_DEFCONFIG: floral_defconfig
-      KSU_TAG: v3.1.0-legacy-susfs
+      KSU_OWNER: sidex15
+      KSU_TAG: legacy-susfs-v2
       KERNEL_DIR: kernel
       OUT_DIR: out
       AK3_DIR: anykernel3

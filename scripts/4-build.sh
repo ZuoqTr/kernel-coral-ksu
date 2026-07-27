@@ -91,6 +91,11 @@ echo "[4] O: $O"
 
 # Direct make invocation. -j parallel, ARCH=arm64, LLVM=0 (apt gcc for
 # host). CC=clang still applies to cross-compile.
+#
+# Build Image first (no dtbs dependency). dtbs target has a known
+# sm8150-coral-dvt-overlay.dtbo parse error in msm-4.14 against
+# newer dtc (pm8150.dtsi:21.1-10 syntax error). We assemble
+# Image.gz-dtb manually from the base DTB (qcom-base/sm8150-v2.dtb).
 make -j"$(nproc)" \
   ARCH=arm64 \
   CC=clang \
@@ -105,8 +110,34 @@ make -j"$(nproc)" \
   LLVM=0 \
   LLVM_IAS=0 \
   O="$O" \
-  Image.gz-dtb \
+  Image \
   2>&1 | tee "$REPO_ROOT/$KERNEL_DIR/build.log"
+
+# Build base DTBs (skip DTBO overlays). Base DTB is required for
+# kernel boot on Pixel 4 (sm8150-v2 platform base).
+if [ -d "$O/arch/arm64/boot/dts" ]; then
+  echo "[4] Building base DTBs (DTBOs skipped — pm8150.dtsi syntax error)"
+  make -j"$(nproc)" \
+    ARCH=arm64 \
+    CROSS_COMPILE=aarch64-linux-android- \
+    CLANG_TRIPLE=aarch64-linux-gnu- \
+    CLANG_GCC_TRIPLE=aarch64-linux-gnu- \
+    LLVM=0 LLVM_IAS=0 \
+    O="$O" \
+    dtbs \
+    2>&1 | tee -a "$REPO_ROOT/$KERNEL_DIR/build.log" || {
+      echo "[4] WARN: dtbs build had errors (DTBO); continuing"
+    }
+fi
+
+# Assemble Image.gz-dtb manually from Image + base DTB
+DTB="$O/arch/arm64/boot/dts/qcom-base/sm8150-v2.dtb"
+if [ -f "$O/arch/arm64/boot/Image" ] && [ -f "$DTB" ]; then
+  echo "[4] Assembling Image.gz-dtb from Image + $DTB"
+  cat "$O/arch/arm64/boot/Image" "$DTB" > "$O/arch/arm64/boot/Image.gz-dtb"
+  SIZE=$(stat -c%s "$O/arch/arm64/boot/Image.gz-dtb" 2>/dev/null || stat -f%z "$O/arch/arm64/boot/Image.gz-dtb")
+  echo "[4] Image.gz-dtb assembled: $SIZE bytes"
+fi
 
 END=$(date +%s)
 echo "[4] Build duration: $(((END-START)/60))m $(((END-START)%60))s"
