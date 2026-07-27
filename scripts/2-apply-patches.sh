@@ -64,8 +64,22 @@ cp -v "$SUSFS_DIR/include/linux/susfs.h"     include/linux/susfs.h
 cp -v "$SUSFS_DIR/include/linux/susfs_def.h" include/linux/susfs_def.h
 cp -v "$SUSFS_DIR/include/linux/sus_su.h"    include/linux/sus_su.h
 cp -v "$SUSFS_DIR/fs/susfs.c"                fs/susfs.c
+cp -v "$SUSFS_DIR/fs/sus_su.c"               fs/sus_su.c 2>/dev/null || true
 test -f fs/susfs.c
 echo "[2d] OK: susfs.h + susfs_def.h + sus_su.h + fs/susfs.c staged"
+
+# --- step 4b: register susfs.c in fs/Makefile (patch doesn't add obj-y) ---
+# The 0001 patch adds C function hooks in fs/*.c but doesn't touch the
+# Makefile, so the susfs code never gets compiled. Append obj-y entries
+# so susfs.o + sus_su.o get linked into vmlinux.
+echo "[2d+] Adding susfs.o + sus_su.o to fs/Makefile..."
+if ! grep -q "susfs.o" fs/Makefile; then
+  printf "\n# SUSFS (KernelSU addon)\nobj-y +=\tsusfs.o\n" >> fs/Makefile
+fi
+if [ -f fs/sus_su.c ] && ! grep -q "sus_su.o" fs/Makefile; then
+  printf "obj-y +=\tsus_su.o\n" >> fs/Makefile
+fi
+grep -E "susfs\.o|sus_su\.o" fs/Makefile | head -5
 
 # --- step 5: KSU Next susfs integration ---
 # SKIP 0002-enable-susfs-ksu.patch — KSU Next v3.1.0-legacy-susfs already
