@@ -67,31 +67,17 @@ cp -v "$SUSFS_DIR/fs/susfs.c"                fs/susfs.c
 test -f fs/susfs.c
 echo "[2d] OK: susfs.h + susfs_def.h + sus_su.h + fs/susfs.c staged"
 
-# --- step 5: KSU Next susfs integration (Kconfig + susfs ifdefs in KSU files) ---
-# 0002 patch targets `kernel/*` paths — i.e. the KSU cloned repo at
-# KernelSU-Next/kernel/. Rewrite to `drivers/kernelsu/*` (where the symlink lives).
-echo "[2e] Applying susfs4ksu KSU integration (10_enable_susfs_for_ksu)..."
-TMP=$(mktemp -d)
-cp "$SUSFS_DIR/0002-enable-susfs-ksu.patch" "$TMP/ksu.patch"
-# Rewrite kernel/ → drivers/kernelsu/ in BOTH a/ and b/ sides of all diff headers.
-# BSD sed (macOS) doesn't support \1 in -E mode — use perl for portability.
-# Anchoring to ^diff --git|---|+++ prevents accidental matches in hunk content.
-perl -i -pe 's|^(diff --git a/)kernel/|\1drivers/kernelsu/|; s|^(diff --git .+ b/)kernel/|\1drivers/kernelsu/|' "$TMP/ksu.patch"
-perl -i -pe 's|^--- a/kernel/|--- a/drivers/kernelsu/|' "$TMP/ksu.patch"
-perl -i -pe 's|^\+\+\+ b/kernel/|+++ b/drivers/kernelsu/|' "$TMP/ksu.patch"
+# --- step 5: KSU Next susfs integration ---
+# SKIP 0002-enable-susfs-ksu.patch — KSU Next v3.1.0-legacy-susfs already
+# has CONFIG_KSU_SUSFS Kconfig + ifdefs built in. The ShirkNeko/susfs4ksu
+# 0002 patch targets the older tiann/KernelSU API (core_hook.c, etc.)
+# which doesn't exist in v3.1.0-legacy-susfs (renamed to lsm_hooks.c,
+# setuid_hook.c, syscall_hook_manager.c, etc.). The Kconfig + ifdef
+# integration is already present at this tag — nothing to apply.
+echo "[2e] Skipping 0002 (KSU v3.1.0-legacy-susfs already has CONFIG_KSU_SUSFS)..."
 
-# --unsafe-paths lets git apply descend through the drivers/kernelsu
-# symlink that KSU setup.sh creates. Without it, every file under
-# drivers/kernelsu/ is rejected as "beyond a symbolic link".
-git apply --verbose --unsafe-paths "$TMP/ksu.patch" || {
-  echo "[2e] FAILED: 0002-enable-susfs-ksu.patch (after path rewrite)"
-  head -30 "$TMP/ksu.patch"
-  exit 1
-}
-rm -rf "$TMP"
-
-# Sanity: KSU's Kconfig should now expose KSU_SUSFS options
-grep -q "KSU_SUSFS" drivers/kernelsu/Kconfig || {
+# Sanity: KSU's Kconfig should expose KSU_SUSFS options natively
+grep -q "config KSU_SUSFS" drivers/kernelsu/Kconfig || {
   echo "[2e] MISSING KSU_SUSFS in drivers/kernelsu/Kconfig"; exit 1; }
 
 echo "[2] All patches applied successfully"
