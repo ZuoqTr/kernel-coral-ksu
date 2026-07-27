@@ -80,7 +80,10 @@ perl -i -pe 's|^(diff --git a/)kernel/|\1drivers/kernelsu/|; s|^(diff --git .+ b
 perl -i -pe 's|^--- a/kernel/|--- a/drivers/kernelsu/|' "$TMP/ksu.patch"
 perl -i -pe 's|^\+\+\+ b/kernel/|+++ b/drivers/kernelsu/|' "$TMP/ksu.patch"
 
-git apply --verbose "$TMP/ksu.patch" || {
+# --unsafe-paths lets git apply descend through the drivers/kernelsu
+# symlink that KSU setup.sh creates. Without it, every file under
+# drivers/kernelsu/ is rejected as "beyond a symbolic link".
+git apply --verbose --unsafe-paths "$TMP/ksu.patch" || {
   echo "[2e] FAILED: 0002-enable-susfs-ksu.patch (after path rewrite)"
   head -30 "$TMP/ksu.patch"
   exit 1
