@@ -1,0 +1,183 @@
+diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
+index 403cbb12a..7c3fad2cb 100644
+--- a/fs/proc/cmdline.c
++++ b/fs/proc/cmdline.c
+@@ -4,8 +4,18 @@
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ 
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
++#endif
++
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++	if (!susfs_spoof_cmdline_or_bootconfig(m)) {
++		seq_putc(m, '\n');
++		return 0;
++	}
++#endif
+ 	seq_printf(m, "%s\n", saved_command_line);
+ 	return 0;
+ }
+diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
+index 9c417e01c..d92751f02 100644
+--- a/fs/proc/task_mmu.c
++++ b/fs/proc/task_mmu.c
+@@ -20,6 +20,10 @@
+ #include <linux/uaccess.h>
+ #include <linux/mm_inline.h>
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++#include <linux/susfs_def.h>
++#endif
++
+ #include <asm/elf.h>
+ #include <asm/tlb.h>
+ #include <asm/tlbflush.h>
+@@ -348,6 +352,10 @@ static void show_vma_header_prefix(struct seq_file *m,
+ 		   MAJOR(dev), MINOR(dev), ino);
+ }
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++extern void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned long *out_ino);
++#endif
++
+ static void
+ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
+ {
+@@ -362,8 +370,17 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
+ 
+ 	if (file) {
+ 		struct inode *inode = file_inode(vma->vm_file);
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++		if (unlikely(inode->i_state & INODE_STATE_SUS_KSTAT)) {
++			susfs_sus_ino_for_show_map_vma(inode->i_ino, &dev, &ino);
++			goto bypass_orig_flow;
++		}
++#endif
+ 		dev = inode->i_sb->s_dev;
+ 		ino = inode->i_ino;
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++bypass_orig_flow:
++#endif
+ 		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
+ 	}
+ 
+diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
+index b859aaeec..833f2b001 100644
+--- a/fs/proc_namespace.c
++++ b/fs/proc_namespace.c
+@@ -12,12 +12,20 @@
+ #include <linux/security.h>
+ #include <linux/fs_struct.h>
+ #include <linux/sched/task.h>
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++#include <linux/susfs_def.h>
++#endif
+ 
+ #include "proc/internal.h" /* only for get_proc_task() in ->open() */
+ 
+ #include "pnode.h"
+ #include "internal.h"
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++extern bool susfs_is_current_ksu_domain(void);
++bool susfs_hide_sus_mnts_for_all_procs = true;
++#endif
++
+ static unsigned mounts_poll(struct file *file, poll_table *wait)
+ {
+ 	struct seq_file *m = file->private_data;
+@@ -102,6 +110,12 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
+ 	struct super_block *sb = mnt_path.dentry->d_sb;
+ 	int err;
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID) &&
++	(susfs_hide_sus_mnts_for_all_procs || !susfs_is_current_ksu_domain()))
++		return 0;
++#endif
++
+ 	if (sb->s_op->show_devname) {
+ 		err = sb->s_op->show_devname(m, mnt_path.dentry);
+ 		if (err)
+@@ -138,6 +152,12 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
+ 	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
+ 	int err;
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID) &&
++	(susfs_hide_sus_mnts_for_all_procs || !susfs_is_current_ksu_domain()))
++		return 0;
++#endif
++
+ 	seq_printf(m, "%i %i %u:%u ", r->mnt_id, r->mnt_parent->mnt_id,
+ 		   MAJOR(sb->s_dev), MINOR(sb->s_dev));
+ 	if (sb->s_op->show_path) {
+@@ -202,6 +222,12 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
+ 	struct super_block *sb = mnt_path.dentry->d_sb;
+ 	int err;
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID) &&
++	(susfs_hide_sus_mnts_for_all_procs || !susfs_is_current_ksu_domain()))
++		return 0;
++#endif
++
+ 	/* device */
+ 	if (sb->s_op->show_devname) {
+ 		seq_puts(m, "device ");
+diff --git a/include/linux/mount.h b/include/linux/mount.h
+index 1ff21c19b..44478c249 100644
+--- a/include/linux/mount.h
++++ b/include/linux/mount.h
+@@ -68,6 +68,9 @@ struct vfsmount {
+ 	struct dentry *mnt_root;	/* root of the mounted tree */
+ 	struct super_block *mnt_sb;	/* pointer to superblock */
+ 	int mnt_flags;
++#ifdef CONFIG_KSU_SUSFS
++	u64 susfs_mnt_id_backup;
++#endif
+ 	void *data;
+ } __randomize_layout;
+ 
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 22484e445..46bffe282 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -46,6 +46,7 @@ struct kstat {
+ 	struct timespec	ctime;
+ 	struct timespec	btime;			/* File creation time */
+ 	u64		blocks;
++	u64		mnt_id;
+ };
+ 
+ #endif
+diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
+index 06432e1a7..1bb58390d 100644
+--- a/kernel/kallsyms.c
++++ b/kernel/kallsyms.c
+@@ -641,8 +641,21 @@ static int s_show(struct seq_file *m, void *p)
+ 		seq_printf(m, "%pK %c %s\t[%s]\n", (void *)iter->value,
+ 			   type, iter->name, iter->module_name);
+ 	} else
++#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+ 		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
+ 			   iter->type, iter->name);
++#else
++	{
++		if (iter->name[0] &&
++		    (strstr(iter->name, "ksu_") ||
++		     !strncmp(iter->name, "susfs_", 6) ||
++		     !strncmp(iter->name, "ksud", 4))) {
++			return 0;
++		}
++		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
++			   iter->type, iter->name);
++	}
++#endif
+ 	return 0;
+ }
+ 

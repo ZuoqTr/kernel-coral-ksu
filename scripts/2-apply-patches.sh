@@ -45,10 +45,16 @@ done
 echo "[2b] OK: all 5 manual hooks applied"
 
 # --- step 3: susfs kernel-4.14 patch (modifies existing files) ---
-echo "[2c] Applying susfs4ksu kernel-4.14 patch (50_add_susfs_in_kernel-4.14)..."
-git apply --verbose "$SUSFS_DIR/0001-add-susfs.patch" || {
-  echo "[2c] FAILED: 0001-add-susfs.patch"
-  git apply --verbose --ignore-whitespace "$SUSFS_DIR/0001-add-susfs.patch" || exit 1
+# Use 0001-combined.patch — AOSP-coral-4.14-tailored version with the 5
+# manually-fixed hunks for fs/proc/cmdline.c, fs/proc/task_mmu.c,
+# fs/proc_namespace.c, include/linux/mount.h, include/linux/stat.h,
+# kernel/kallsyms.c baked in. (Upstream 0001-add-susfs.patch was authored
+# against a slightly different 4.14 tree and produced 5 rejects on this
+# AOSP msm-floral-4.14 android10-qpr3 checkout.)
+echo "[2c] Applying susfs4ksu kernel-4.14 patch (AOSP-coral-tailored combined)..."
+git apply --verbose --whitespace=fix "$SUSFS_DIR/0001-combined.patch" || {
+  echo "[2c] FAILED: 0001-combined.patch"
+  git apply --verbose --reject --whitespace=fix "$SUSFS_DIR/0001-combined.patch" || exit 1
 }
 
 # --- step 4: copy susfs source/header files (patch doesn't create them) ---
