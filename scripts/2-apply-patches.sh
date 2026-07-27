@@ -88,7 +88,29 @@ grep -E "susfs\.o|sus_su\.o" fs/Makefile | head -5
 # which doesn't exist in v3.1.0-legacy-susfs (renamed to lsm_hooks.c,
 # setuid_hook.c, syscall_hook_manager.c, etc.). The Kconfig + ifdef
 # integration is already present at this tag — nothing to apply.
-echo "[2e] Skipping 0002 (KSU v3.1.0-legacy-susfs already has CONFIG_KSU_SUSFS)..."
+echo "[2e] Skipping 0002-enable-susfs-ksu.patch (KSU v3.1.0-legacy-susfs already has CONFIG_KSU_SUSFS)..."
+
+# --- step 2f: post-patch fixups (compile-fixup for missing declarations) ---
+# 50-readdir-compat-fixup.patch adds the missing struct inode *inode;
+# declaration in compat_fillonedir (fs/readdir.c). ShirkNeko's 50_*
+# patch inserts the use code (`inode = ilookup(...)`) but forgot the
+# matching decl for THIS one function — fillonedir/filldir/filldir64/
+# compat_filldir all have both, compat_fillonedir only has the use.
+# Without this, Clang 12 fails with "must use 'struct' tag to refer
+# to type 'inode'" at fs/readdir.c:592.
+echo "[2f] Applying post-patch fixups..."
+for fix in "$SUSFS_DIR"/50-readdir-compat-fixup.patch; do
+  if [ -f "$fix" ]; then
+    echo "[2f]   $fix"
+    git apply --verbose --whitespace=fix "$fix" || {
+      echo "[2f] WARN: $fix did not apply cleanly, attempting with --reject"
+      git apply --verbose --reject --whitespace=fix "$fix" || exit 1
+      if ls fs/readdir.c.rej 2>/dev/null; then
+        echo "[2f] manual fix needed in fs/readdir.c (see .rej)"; exit 1
+      fi
+    }
+  fi
+done
 
 # Sanity: KSU's Kconfig should expose KSU_SUSFS options natively
 grep -q "config KSU_SUSFS" drivers/kernelsu/Kconfig || {

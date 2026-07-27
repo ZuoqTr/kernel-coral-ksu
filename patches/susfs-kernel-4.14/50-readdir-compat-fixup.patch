@@ -1,0 +1,29 @@
+Subject: [PATCH] susfs: add missing struct inode decl in compat_fillonedir
+
+The combined susfs4ksu kernel-4.14 patch inserts `inode = ilookup(...)`
+code into compat_fillonedir (fs/readdir.c) but does NOT insert the
+matching `struct inode *inode;` declaration. This causes Clang 12 to
+fail with:
+
+  fs/readdir.c:592:2: error: must use 'struct' tag to refer to type 'inode'
+  fs/readdir.c:593:7: error: use of undeclared identifier 'inode'
+
+All four other filldir variants (fillonedir, filldir, filldir64,
+compat_filldir) have BOTH a decl hunk AND a use hunk. compat_fillonedir
+has only the use hunk.
+
+Fix: insert the missing decl after compat_ulong_t d_ino.
+---
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -390,6 +390,9 @@ static int compat_fillonedir(struct dir_context *ctx, const char *name,
+ 	struct compat_readdir_callback *buf =
+ 		container_of(ctx, struct compat_readdir_callback, ctx);
+ 	struct compat_old_linux_dirent __user *dirent;
+ 	compat_ulong_t d_ino;
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	struct inode *inode;
++#endif
+ 
+ 	if (buf->result)
+ 		return -EINVAL;
