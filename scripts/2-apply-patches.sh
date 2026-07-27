@@ -73,9 +73,10 @@ echo "[2d] OK: susfs.h + susfs_def.h + sus_su.h + fs/susfs.c staged"
 echo "[2e] Applying susfs4ksu KSU integration (10_enable_susfs_for_ksu)..."
 TMP=$(mktemp -d)
 cp "$SUSFS_DIR/0002-enable-susfs-ksu.patch" "$TMP/ksu.patch"
-sed -i -E 's|^(diff --git a/)kernel/|\1drivers/kernelsu/|g' "$TMP/ksu.patch"
-sed -i -E 's|^--- a/kernel/|--- a/drivers/kernelsu/|g' "$TMP/ksu.patch"
-sed -i -E 's|^\+\+\+ b/kernel/|\+\+\+ b/drivers/kernelsu/|g' "$TMP/ksu.patch"
+# BSD sed (macOS) doesn't support \1 in -E mode — use perl for portability.
+perl -i -pe 's|^diff --git a/kernel/|diff --git a/drivers/kernelsu/|g' "$TMP/ksu.patch"
+perl -i -pe 's|^--- a/kernel/|--- a/drivers/kernelsu/|g' "$TMP/ksu.patch"
+perl -i -pe 's|^\+\+\+ b/kernel/|+++ b/drivers/kernelsu/|g' "$TMP/ksu.patch"
 
 git apply --verbose "$TMP/ksu.patch" || {
   echo "[2e] FAILED: 0002-enable-susfs-ksu.patch (after path rewrite)"
